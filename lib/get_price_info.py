@@ -189,6 +189,7 @@ class StockEarning:
         self.pd_earning_date = None
         self.path_sec = f"{os.path.dirname(DIR)}/static/Financial_reports/SEC"
         self.path_yf_earning = f'{os.path.dirname(DIR)}/static/Financial_reports/Earning_dates.pkl'
+        self.path_yf_financial = f'{os.path.dirname(DIR)}/static/Financial_reports/YF_FR'
 
     def get_yf_earning_dates(self, symbols):
         """
@@ -478,51 +479,69 @@ class StockEarning:
                     print(f'\n{_}')
 
     def verify_earning_dates(self):
-        symbols = list(pd.read_csv(f'{os.path.dirname(DIR)}/static/Financial_reports/pd_symbol.csv').symbol)
+        file_symbols = f'{os.path.dirname(DIR)}/static/Financial_reports/pd_symbol.csv'
+        file_symbols_us = f'{os.path.dirname(DIR)}/static/Financial_reports/pd_symbol_us.csv'
+        symbols = list(pd.read_csv(file_symbols).symbol)
         symbols_exclude = ['CATM']
         symbols = [i for i in symbols if i not in set(symbols_exclude)]
+        symbols_us = []
         n_tol = 12
-
-        for i_symbol, symbol in zip(range(len(symbols)), symbols[:5]):
-            cik = self.get_cik(symbol)
-            pd_yf = self.get_yf_earning_dates(symbol).rename(columns={'time': 'Filing date'})
-            pd_yf = pd_yf.drop_duplicates().sort_values(by='Filing date')
-            pf_sec = pd.read_csv(f'{self.path_sec}/{symbol}.csv').sort_values(by='Filing date')
-            if '10-Q' in set(pf_sec['Form type']):
+        time_start, count_us = time.time(), 0
+        dict_sum = {'symbol': [], 'match': [], 'yf_total': [], 'sec_total': []}
+        dict_detail = {'symbol': [], 'yf_report': [], 'sec_report': [], 'sec_file': []}
+        for i_symbol, symbol in zip(range(len(symbols)), symbols):
+            # cik = self.get_cik(symbol)
+            pd_sec_ori = pd.read_csv(f'{self.path_sec}/{symbol}.csv')
+            if '10-Q' in set(pd_sec_ori['Form type']):
                 # Tested, companies that has 10-Q never has 20-F filed
-                pf_sec = pf_sec.loc[pf_sec['Form type'].isin(['10-Q', '10-K'])]
-            else:
-                pf_sec = pf_sec.dropna()
-            filling_dates_sec = list(pf_sec['Filing date'])
-            pd_yf_match = pd_yf.merge(pf_sec[['Filing date', 'Reporting date']], on='Filing date', how='inner')
-            pd_yf_unmatch = pd_yf.loc[~pd_yf['Filing date'].isin(filling_dates_sec)]
-            filing_dates_yf = np.asarray(pd_yf_unmatch['Filing date'])
-            filing_dates_sec = np.asarray(pf_sec['Filing date'])
-            report_dates_sec = np.asarray(pf_sec['Reporting date'])
-            dict_rematch = {'Filing date': [], 'Reporting date': [], 'Filing date (sec)': []}
-            for filing_date in list(filing_dates_yf):
-                tol_start = unix2date(date2unix(filing_date) - n_tol * 3600 * 24)[:10]
-                tol_end = unix2date(date2unix(filing_date) + n_tol * 3600 * 24)[:10]
-                matched_index = (filing_dates_sec >= tol_start) & (filing_dates_sec <= tol_end)
-                if any(matched_index):
-                    _rematched_filing = filing_dates_sec[matched_index]
-                    _rematched_report = report_dates_sec[matched_index]
-                    dict_rematch['Filing date'].append(filing_date)
+                # TODO: Develop program to parse each report from SEC to get the actual first Quarter/Annual filling and report dates
+                count_us += 1
+                symbols_us.append(symbol)
+                pd_sec = pd_sec_ori.loc[pd_sec_ori['Form type'].isin(['10-Q', '10-K'])][['Filing date', 'Reporting date']]
+                pd_yf_report = pd.read_csv(f'{self.path_yf_financial}/{symbol}.csv')
+                times_yf = [i for i in pd_yf_report.columns if i not in {'section', 'item'}]
+                times_sec = pd_sec['Reporting date']
+                matched_list = set(times_sec) & set(times_yf)
+                to_rematch_yf_list = [i for i in times_yf if i not in matched_list]
+                to_rematch_sec_list = np.asarray([i for i in times_sec if i not in matched_list])
+                = {'symbol': [], 'yf_report': [], 'sec_report': [], 'sec_file': []}
+                dict_detail['symbol']
+                dict_detail['yf_report']
+                dict_detail['sec_report']
+                dict_detail['sec_file']
+                for to_rematch_yf in to_rematch_yf_list:
+                    tol_start = unix2date(date2unix(to_rematch_yf) - n_tol * 3600 * 24)[:10]
+                    tol_end = unix2date(date2unix(to_rematch_yf) + n_tol * 3600 * 24)[:10]
+                    matched_index = (to_rematch_sec_list >= tol_start) & (to_rematch_sec_list <= tol_end)
 
-                    if sum(matched_index) > 1:
-                        _rematched_filing = np.asarray([date2unix(i) for i in _rematched_filing])
-                        filing_date_unix = date2unix(filing_date)
-                        close_index = abs(_rematched_filing - filing_date_unix).argmin()
-                        _rematched_filing = [unix2date(_rematched_filing[close_index])[:10]]
-                        _rematched_report = [_rematched_report[close_index]]
-                    dict_rematch['Filing date (sec)'].append(_rematched_filing[0])
-                    dict_rematch['Reporting date'].append(_rematched_report[0])
+                    if any(matched_index):
+                        rematched_sec = to_rematch_sec_list[matched_index]
 
-            pd_rematched = pd.DataFrame(dict_rematch)
-            pd_yf_rematch = pd.concat([pd_yf_match, pd_rematched]).sort_values(by='Filing date')
+                        if sum(matched_index) > 1:
+                            rematched_sec = np.asarray([date2unix(i) for i in rematched_sec])
+                            filing_date_unix = date2unix(to_rematch_yf)
+                            close_index = abs(rematched_sec - filing_date_unix).argmin()
+                            rematched_sec = [unix2date(rematched_sec[close_index])[:10]]
 
 
 
+
+                n_match = len(matched_list)
+                yf_total = len(times_yf)
+                sec_total = len(times_sec)
+                dict_sum['symbol'].append(symbol)
+                dict_sum['match'].append(n_match)
+                dict_sum['yf_total'].append(yf_total)
+                dict_sum['sec_total'].append(sec_total)
+
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rTime: {time_span} - Progress {symbol}: {i_symbol + 1}/{len(symbols)}', end='')
+
+        pd_sum = pd.DataFrame(dict_sum)
+        pd_sum['rate'] = pd_sum['match'] / pd_sum['total']
+        pd_sum = pd_sum.sort_values(by='rate')
+
+        pd.DataFrame({'symbol': symbols_us}).to_csv(file_symbols_us, index=False)
 
 
 

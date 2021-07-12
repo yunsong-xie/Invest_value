@@ -226,7 +226,7 @@ def get_pd_yf_growth(force_reload=False):
         try:
             symbols = list(dict_yf_year.keys())
         except:
-            dict_yf_year = get_yf_year_data(dir_csv=None)
+            dict_yf_year = get_yf_year_data(force_reload=False)
             symbols = list(dict_yf_year.keys())
 
         symbols = sorted(dict_yf_year.keys())
@@ -447,7 +447,7 @@ def bu_se_2_profit_fine(dict_pd_stock_bs, pd_stock_bs, n_stock_max=5):
     return pd_reward
 
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
     try:
         symbols = sorted(pd_yf_growth.symbol.unique())
     except:
@@ -587,9 +587,6 @@ if __name__ == '__main__':
 
     pd_reward = bu_se_2_profit_fine(dict_pd_stock_bs, pd_stock_bs, n_stock_max=5)
 
-
-
-if 1==1:
 
     fig, _ax = plt.subplots(1, 1)
     ax = fig.axes
