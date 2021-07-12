@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Alpha_Vantage/AV_query.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Alpha_Vantage/assets/stock_financial.db" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/IEX/get_financial.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_SP_Capital_IQ.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_2021.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210614.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210616.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210622.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/Selenium_SP_Capital_IQ.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Archieve/get_price_info_1.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Parse_financial_excel_20210624.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Parse_yfinance.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Selenium_SP_Capital_IQ.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Selenium_sec_report.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Selenium_yfinance.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cache/log_file.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/jupyter_train/.ipynb_checkpoints/weight_train-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/jupyter_train/weight_train.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/image_match.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/sub_numerical.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.idea/Invest_value.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Financial_analysis-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Parse_financial_excel-checkpoint.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Untitled-checkpoint.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/Financial_analysis.ipynb" afterDir="false" />
+    </list>
+    <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
+    <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Setup Script" />
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="MIXED" />
+    <option name="SET_USER_NAME_GLOBALLY" value="false" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="ProjectId" id="1rfTeeerRXzFLhvB6pQWnlVdIcY" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="showMembers" value="true" />
+    <option name="sortByType" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="org.jetbrains.plugins.github.ui.GithubSettingsConfigurable" />
+  </component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings module-name="Invest_value" is-module-sdk="true">
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="Invest_value" />
+      </console-settings>
+    </option>
+    <option name="myUseExistingConsole" value="true" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ" />
+      <recent name="D:\PycharmProjects\Invest_value\capitalIQ" />
+      <recent name="D:\PycharmProjects\Invest_value\Alpha_Vantage" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\Archieve" />
+      <recent name="D:\PycharmProjects\Investment\Invest_value" />
+      <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ\Archieve" />
+      <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ\static\analysis" />
+      <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ\static\selenium" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.Parse_financial_excel_20210624">
+    <configuration name="AV_query" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Alpha_Vantage" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Alpha_Vantage/AV_query.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Parse_financial_excel_20210624" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/capitalIQ" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="D:\PycharmProjects\Investment\Invest_value\Parse_financial_excel_20210624.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Selenium_yfinance" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/capitalIQ" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="D:\PycharmProjects\Investment\Invest_value\Selenium_yfinance.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="authentication" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../../anaconda3/Lib/site-packages/robin_stocks" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../../anaconda3/Lib/site-packages/robin_stocks/authentication.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="sub_get_price_info" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../Invest_technical" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../Invest_technical/sub_get_price_info.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration>C:\Users\yunso\AppData\Roaming\Subversion</configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="" />
+      <created>1619366240886</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1619366240886</updated>
+    </task>
+    <task id="LOCAL-00001" summary="Initial upload">
+      <created>1623776854786</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1623776854786</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Initial upload">
+      <created>1623777052617</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1623777052617</updated>
+    </task>
+    <task id="LOCAL-00003" summary="1st revision">
+      <created>1624163700919</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1624163700919</updated>
+    </task>
+    <task id="LOCAL-00004" summary="1st revision">
+      <created>1624165508890</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1624165508890</updated>
+    </task>
+    <task id="LOCAL-00005" summary="2st revision">
+      <created>1624595465153</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1624595465153</updated>
+    </task>
+    <task id="LOCAL-00006" summary="3rd version">
+      <created>1624739668658</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1624739668658</updated>
+    </task>
+    <task id="LOCAL-00007" summary="4th version">
+      <created>1625023782906</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1625023782906</updated>
+    </task>
+    <task id="LOCAL-00008" summary="2021-07-11">
+      <created>1626057454810</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1626057454810</updated>
+    </task>
+    <task id="LOCAL-00009" summary="2021-07-11">
+      <created>1626058041642</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1626058041642</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe">
+      <created>1626058197226</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1626058197226</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf">
+      <created>1626058279242</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1626058279242</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Initial upload" />
+    <MESSAGE value="1st revision" />
+    <MESSAGE value="2st revision" />
+    <MESSAGE value="3rd version" />
+    <MESSAGE value="4th version" />
+    <MESSAGE value="2021-07-11" />
+    <MESSAGE value="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
+    <MESSAGE value="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf" />
+    <option name="LAST_COMMIT_MESSAGE" value="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf" />
+  </component>
+</project>
