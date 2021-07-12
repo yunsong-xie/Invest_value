@@ -4,41 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Alpha_Vantage/AV_query.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Alpha_Vantage/assets/stock_financial.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/IEX/get_financial.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_SP_Capital_IQ.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_2021.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210614.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210616.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Parse_financial_excel_20210622.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/Selenium_SP_Capital_IQ.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Archieve/get_price_info_1.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Parse_financial_excel_20210624.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Parse_yfinance.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Selenium_SP_Capital_IQ.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Selenium_sec_report.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Selenium_yfinance.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cache/log_file.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jupyter_train/.ipynb_checkpoints/weight_train-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jupyter_train/weight_train.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/image_match.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/sub_numerical.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.idea/Invest_value.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Financial_analysis-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Parse_financial_excel-checkpoint.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/Untitled-checkpoint.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/Financial_analysis.ipynb" afterDir="false" />
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="test csv file">
+      <change afterPath="$PROJECT_DIR$/static/csv/stock_list/Capital_IQ_exchange.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/static/test.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -58,7 +26,6 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="RESET_MODE" value="MIXED" />
-    <option name="SET_USER_NAME_GLOBALLY" value="false" />
   </component>
   <component name="GitSEFilterConfiguration">
     <file-type-list>
@@ -310,7 +277,21 @@
       <option name="project" value="LOCAL" />
       <updated>1626058279242</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="2021-07-11 init">
+      <created>1626059017920</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1626059017920</updated>
+    </task>
+    <task id="LOCAL-00013" summary="test csv file">
+      <created>1626059236243</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1626059236243</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -334,6 +315,8 @@
     <MESSAGE value="2021-07-11" />
     <MESSAGE value="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <MESSAGE value="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf" />
-    <option name="LAST_COMMIT_MESSAGE" value="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf" />
+    <MESSAGE value="2021-07-11 init" />
+    <MESSAGE value="test csv file" />
+    <option name="LAST_COMMIT_MESSAGE" value="test csv file" />
   </component>
 </project>
