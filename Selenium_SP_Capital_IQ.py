@@ -1,10 +1,13 @@
 
-import os, sys, traceback
+import re, os, sys, traceback
+import pandas as pd
 import win32gui
+from termcolor import colored
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 
@@ -12,7 +15,7 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(DIR).replace('\\', '/')+'/Alpha_Vantage')
 
 import AV_query
-from lib import *
+from capitalIQ.lib.image_match import *
 global service, driver, dict_driver
 
 from selenium.webdriver.chrome.options import Options
