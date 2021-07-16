@@ -179,9 +179,9 @@
       <list>
         <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.get_price_info" />
+        <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.Parse_yfinance" />
         <item itemvalue="Python.Selenium_yfinance" />
-        <item itemvalue="Python.Parse_yfinance" />
       </list>
     </recent_temporary>
   </component>
@@ -316,7 +316,14 @@
       <option name="project" value="LOCAL" />
       <updated>1626067374310</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="Developing sec/yf reporting dates matching algorithm for US located companies.">
+      <created>1626140611100</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1626140611101</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

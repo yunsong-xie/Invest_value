@@ -1,5 +1,5 @@
 # Author: Yunsong Xie
-import re, os, time, glob
+import re, os, time, glob, json
 import datetime
 from bs4 import BeautifulSoup
 import urllib.request
@@ -10,6 +10,8 @@ from pandas.tseries.offsets import CustomBusinessDay
 from termcolor import colored
 from zipfile import ZipFile
 import io
+
+from matplotlib import pyplot as plt
 
 from selenium import webdriver
 
@@ -295,6 +297,7 @@ class StockEarning:
             (pandas.dataframe): corresponding table that includes both cik code and symbol
         """
         if self.pd_cik is None:
+            # downloaded from https://www.sec.gov/files/company_tickers.json
             filename_cik = f'{os.path.dirname(DIR)}/static/Financial_reports/sec_cik.csv'
             if (not os.path.isfile(filename_cik)) | (force_reload):
                 url = 'https://www.sec.gov/files/company_tickers.json'
@@ -342,22 +345,117 @@ class StockEarning:
 
     def _obselete_get_10q(self, symbol):
         zip_file = f'{os.path.dirname(DIR)}/static/Financial_reports/SEC/companyfacts.zip'
-        cik = self.get_cik(symbol)
+        #cik = self.get_cik(symbol)
         fzip = ZipFile(zip_file, 'r')
-        freport = fzip.open(f'CIK{cik}.json')
-        stringio = io.StringIO(freport.read().decode('utf-8'))
-        pd_info_1 = pd.io.json.read_json(stringio)
+        files = fzip.filelist
+        dict_cik_name = {'cik': [], 'name': []}
+        time_start = time.time()
+        dict_asset_list = []
+        for i_file, file in zip(range(len(files)), files):
+            f = fzip.open(file, 'r')
+            temp = f.read(256).decode('utf-8')
+            _info = temp.split('{')[1]
+            _info_re = re.findall('cik":(\d+),"entityName":"(.+)","facts', _info)
+            if len(_info_re) > 0:
+                _cik, _name = _info_re[0]
 
-        pd_info = pd_info_1.loc['us-gaap'].loc['facts']
-        keys = list(pd_info.keys())
+                f = fzip.open(file, 'r')
+                dict_info_1 = json.load(io.StringIO(f.read().decode('utf-8')))
+                if 'us-gaap' in dict_info_1['facts']:
+                    dict_info = dict_info_1['facts']['us-gaap']
+                    if 'Assets' in dict_info:
+                        for currency in dict_info['Assets']['units']:
+                            dict_asset_currency = [i for i in dict_info['Assets']['units'][currency]]
+                            for _ in range(len(dict_asset_currency)):
+                                dict_asset_currency[_]['currency'] = currency
+                                dict_asset_currency[_]['cik'] = _cik
+                            dict_asset_list += dict_asset_currency
+                dict_cik_name['cik'].append(_cik)
+                dict_cik_name['name'].append(_name)
 
-        pd_data_list = []
-        data_sec_list = []
-        for key in keys:
-            for currency in pd_info[key]['units']:
-                data_sec_list += [i for i in pd_info[key]['units'][currency]]
-        pd_data = pd.DataFrame(data_sec_list).sort_values(by='end')
-        pd_data.groupby('end').filed.min().reset_index()
+                time_span = round(time.time() - time_start, 1)
+                print(f'\rTime: {time_span} - Progress {symbol}: {i_file + 1}/{len(files)}', end='')
+        pd_cik_name = pd.DataFrame(dict_cik_name)
+        pd_cik_name.cik = pd_cik_name.cik.str.rjust(10, '0')
+
+        pd_asset = pd.DataFrame(dict_asset_list)
+        pd_asset.to_pickle(f'{os.path.dirname(DIR)}/static/Financial_reports/sec_asset.pkl')
+        pd_cik_name.to_csv(f'{os.path.dirname(DIR)}/static/Financial_reports/sec_cik_name.csv', index=False)
+
+        fzip.close()
+
+    def _temp1(self):
+        pd_asset = pd.read_pickle(f'{os.path.dirname(DIR)}/static/Financial_reports/sec_asset.pkl')
+        pd_cik_name = pd.read_csv(f'{os.path.dirname(DIR)}/static/Financial_reports/sec_cik_name.csv')
+
+        pd_asset['cik'] = pd_asset['cik'].astype(int)
+        pd_asset['val'] = pd_asset['val'].astype(float)
+        pd_asset = pd_asset[['end', 'val', 'currency', 'cik']].drop_duplicates()
+        pd_asset = pd_asset.loc[pd_asset.currency == 'USD']
+        pd_asset = pd_asset.groupby(['end', 'cik'])['val'].mean().reset_index()
+        pd_asset = pd_asset.sort_values(by=['cik', 'end'])
+        pd_asset.index = np.arange(len(pd_asset))
+        pd_asset = pd_asset.loc[pd_asset.val > 1]
+        pd_asset.val = pd_asset.val.abs()
+
+        pd_cik_size = pd_asset.groupby('cik').size().rename('num').reset_index().sort_values(by='cik')
+        pd_cik_size['ind_start'] = [0] + list(pd_cik_size.num.cumsum()[:-1])
+        pd_cik_size['ind_end'] = list(pd_cik_size.num.cumsum())
+        ratio_change_threshold = 3
+        pd_asset_end_list = []
+        cik_list = list(set(pd_asset.cik))
+        time_start = time.time()
+        for i_cik, cik in zip(range(len(cik_list)), cik_list):
+            ind_start, ind_end = pd_cik_size.iloc[i_cik][['ind_start', 'ind_end']]
+
+            pd_asset_symbol = pd_asset.iloc[ind_start: ind_end] # Takes 21.6 s
+
+            # pd_asset_symbol = pd_asset.loc[pd_asset.cik == cik] # Takes 33.4 s
+            if len(pd_asset_symbol) <= 2:
+                ind_select_list = range(len(pd_asset_symbol))
+                diff_select_list = [0] * len(pd_asset_symbol)
+                property_select_list = [f'{len(ind_select_list)}'] * len(ind_select_list)
+            else:
+                val_array = np.asarray(pd_asset_symbol.val)
+                val_diff_array = val_array[:-1] / val_array[1:]
+                ind_array = np.arange(len(val_diff_array))
+                ind_array_sel = ind_array[((val_diff_array > ratio_change_threshold) | (val_diff_array < (1 / ratio_change_threshold)))]
+                if len(ind_array_sel) == 0:
+                    ind_select_list = [0, len(val_array) - 1]
+                    diff_select_list = val_diff_array[[0, -1]]
+                    property_select_list = ['start', 'end']
+                else:
+                    if 0 in ind_array_sel:
+                        ind_array_sel_1 = [i for i in range(len(ind_array_sel)) if i == ind_array_sel[i]]
+                    else:
+                        ind_array_sel_1 = [0]
+
+                    if (len(val_diff_array) - 1) in ind_array_sel:
+                        ind_array_sel_2 = sorted([ind_array_sel[-i - 1] for i in range(len(ind_array_sel))
+                                                  if (len(val_diff_array) - 1 - i) == ind_array_sel[-i - 1]])
+                    else:
+                        ind_array_sel_2 = [len(val_diff_array) - 1]
+                    ind_select_list = ind_array_sel_1 + ind_array_sel_2
+                    diff_select_list = np.concatenate((val_diff_array[ind_array_sel_1], val_diff_array[[i for i in ind_array_sel_2]]))
+                    property_select_list = ['start'] * len(ind_array_sel_1) + ['end'] * len(ind_array_sel_2)
+
+
+            pd_asset_end_symbol = pd_asset_symbol.iloc[ind_select_list].copy()
+            pd_asset_end_symbol['val_diff'] = diff_select_list
+            pd_asset_end_symbol['property'] = property_select_list
+            pd_asset_end_list.append(pd_asset_end_symbol)
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rGetting fine price info - time {time_span} s - progress {i_cik + 1}/{len(cik_list)}', end='')
+        pd_asset_end = pd.concat(pd_asset_end_list)
+        pd_asset_end_outlier = pd_asset_end.loc[(pd_asset_end.val_diff > ratio_change_threshold) |
+                                                (pd_asset_end.val_diff < (1 / ratio_change_threshold))]
+        np.histogram(pd_asset_end.val_diff, bins=50)
+
+        plt.hist(pd_asset_end.val_diff, bins=50)
+
+
+
+
 
     def get_sec_earning_data(self, symbols=None):
         """
@@ -479,6 +577,9 @@ class StockEarning:
                     print(f'\n{_}')
 
     def verify_earning_dates(self):
+        """
+
+        """
         file_symbols = f'{os.path.dirname(DIR)}/static/Financial_reports/pd_symbol.csv'
         file_symbols_us = f'{os.path.dirname(DIR)}/static/Financial_reports/pd_symbol_us.csv'
         symbols = list(pd.read_csv(file_symbols).symbol)
@@ -554,7 +655,7 @@ class StockEarning:
         pd_sum = pd.DataFrame(dict_sum)
         pd_sum['yf_rate'] = pd_sum['match'] / pd_sum['yf_total']
         pd_sum['sec_rate'] = pd_sum['match'] / pd_sum['sec_total']
-        pd_sum = pd_sum.sort_values(by='sec_rate')
+        pd_sum = pd_sum.sort_values(by='yf_rate')
         pd_detail = pd.DataFrame(dict_detail)
 
         pd.DataFrame({'symbol': symbols_us}).to_csv(file_symbols_us, index=False)
@@ -766,3 +867,8 @@ if 1==0:
     temp1 = temp['facts']['us-gaap']
     temp2 = temp1['AccountsPayable']
 
+if 1==1:
+    file = 'C:/Users/Yunsong_i7/Desktop/CIK0001579733.json'
+    pd_data = pd.read_json(file)
+    pd_data.loc['dei'].loc['facts']
+    list(pd_data.loc['us-gaap'].loc['facts'].keys())
