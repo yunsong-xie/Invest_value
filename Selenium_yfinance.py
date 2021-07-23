@@ -44,20 +44,21 @@ def web_wait_element(driver, element_type='id', element_value='', time_out=5):
         time.sleep(time_delay)
 
 
-def initiate_driver():
+def initiate_driver(is_login=False):
 
-    def yfinance_login(default_url):
+    def yfinance_login(default_url, is_login):
         # enter login info
         driver.get(default_url)
-        web_wait_element(driver, 'id', 'header-signin-link', time_out=5)
-        driver.find_element_by_id('header-signin-link').click()
-        username = pd_login.loc[(pd_login.website == 'yahoo finance') & (pd_login.item == 'username')].iloc[0].value
-        web_wait_element(driver, 'id', 'login-username', time_out=5)
-        driver.find_element_by_id('login-username').send_keys(username)
-        driver.find_element_by_id('login-signin').click()
+        if is_login:
+            web_wait_element(driver, 'id', 'header-signin-link', time_out=5)
+            driver.find_element_by_id('header-signin-link').click()
+            username = pd_login.loc[(pd_login.website == 'yahoo finance') & (pd_login.item == 'username')].iloc[0].value
+            web_wait_element(driver, 'id', 'login-username', time_out=5)
+            driver.find_element_by_id('login-username').send_keys(username)
+            driver.find_element_by_id('login-signin').click()
 
     default_url = 'https://finance.yahoo.com/'
-    driver_path= 'static/analysis/chromedriver.exe'
+    driver_path= 'static/analysis/chromedriver92.exe'
     service = Service(driver_path)
     service.start()
     driver = webdriver.Remote(service.service_url)
@@ -67,11 +68,19 @@ def initiate_driver():
 
 
 def get_download():
-    dir = 'C:/Users/yunso/Downloads'
+    dir_options = ['C:/Users/yunso/Downloads', 'C:/Users/Yunsong_i7']
+    for _ in dir_options:
+        if os.path.isdir(_):
+            dir = _
+            break
     files = [i for i in os.listdir(dir) if i[-4:] == '.csv']
     pd_download = pd.DataFrame({'filename': files})
-    pd_download['symbol'] = pd_download.filename.str.split('_').str[0]
-    pd_download['file_type'] = pd_download.filename.str.split('_').str[-1].str[:-4]
+    if len(pd_download) > 0:
+        pd_download['symbol'] = pd_download.filename.str.split('_').str[0]
+        pd_download['file_type'] = pd_download.filename.str.split('_').str[-1].str[:-4]
+    else:
+        pd_download['symbol'] = []
+        pd_download['file_type'] = []
     return pd_download
 
 
@@ -132,6 +141,8 @@ if __name__ == '__main__0':
                       f'body {"> div " * 9}> section > div > div']
     time_start_all = time.time()
 
+    pd_dowload_todo = pd_dowload_todo.loc[pd_dowload_todo.symbol.isin(['CSBR'])]
+
     for _ind in range(len(pd_dowload_todo)):
         _entry_continue = True
         while _entry_continue:
@@ -150,15 +161,15 @@ if __name__ == '__main__0':
                         time_start, _continue, time_span = time.time(), True, 0
                         count = 0
                         while _continue & (time_span < 10):
+                            # Select the quarter data
                             item_list = driver.find_elements_by_css_selector(css_value_list[count % 2])
                             if item_list:
-                                if item_list:
-                                    item_section = [i for i in item_list if 'Income' in i.text][0]
-                                    span_section = [i for i in item_list if 'Quarterly' in i.text][0]
+                                item_section = [i for i in item_list if 'Income' in i.text][0]
+                                span_section = [i for i in item_list if 'Quarterly' in i.text][0]
 
-                                    quarter_button = [i for i in span_section.find_elements_by_css_selector('button') if 'Quarterly' in i.text][0]
-                                    quarter_button.click()
-                                    _continue = False
+                                quarter_button = [i for i in span_section.find_elements_by_css_selector('button') if 'Quarterly' in i.text][0]
+                                quarter_button.click()
+                                _continue = False
                             else:
                                 count += 1
                                 time.sleep(0.25)
@@ -247,3 +258,69 @@ if __name__ == '__main__0':
 
 
 
+content = driver.page_source
+
+
+def find_block(content, keyword, block_shift=None):
+
+    ind_breakdown = content.index(keyword)
+
+    if block_shift:
+        n_block_shift, block_level = block_shift
+        n_block_shift_abs = abs(n_block_shift)
+        if not ((keyword[:4] == '<div') & (n_block_shift == 0)):
+            # In the case where this condition not satisfied, no need to do any pre-processing
+            if n_block_shift <= 0:
+                content_pre = content[:ind_breakdown]
+                anchor_div_pre = re.finditer('</*div', content_pre)
+                matches, ind_start = [], None
+                for _ in anchor_div_pre:
+                    matches.append([_.group(), _.start()])
+                count_level, count_shift_n = 0, 0
+                for i, match in zip(range(len(matches)), matches[::-1]):
+                    if (match[0] == '<div') & (i == 0):
+                        # This is still the same block with the keyword
+                        count_level = 0
+                        if count_level == n_block_shift:
+                            count_shift_n = -1
+                    else:
+                        if match[0] == '<div':
+                            count_level += 1
+                        else:
+                            count_level += -1
+                    if count_level == block_level:
+                        count_shift_n += 1
+                        if count_shift_n == n_block_shift_abs:
+                            ind_start = match[1]
+                            break
+                if ind_start is None:
+                    raise LookupError(f"Can't find the demanded requirments: keyword: {keyword}\n"
+                                      f"n_block_shift: {n_block_shift}\n"
+                                      f"block_level: {block_level}"),
+                content_trimmed = content[ind_start:]
+            else:
+                a=1
+
+
+
+
+
+
+
+
+
+    content_trimmed = content[ind_breakdown:]
+    anchor_div = re.finditer('</*div', content_trimmed)
+    count_div, matchs_ind = 0, []
+    for _ in anchor_div:
+        if _.group() == '<div':
+            count_div += 1
+        else:
+            count_div += -1
+        matchs_ind.append(_.end())
+        if count_div == 0:
+            ind_end = _.end()
+            break
+    return content_trimmed[:ind_end]
+
+content_1 = find_block(content, keyword='<div class="Pos(r)"')

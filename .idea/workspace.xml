@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Selenium_yfinance.py" beforeDir="false" afterPath="$PROJECT_DIR$/Selenium_yfinance.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
@@ -72,7 +73,7 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ\static\selenium" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.get_price_info">
+  <component name="RunManager" selected="Python.Selenium_yfinance">
     <configuration name="Parse_financial_excel_20210624" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -119,9 +120,6 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -177,11 +175,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.get_price_info" />
-        <item itemvalue="Python.get_price_info" />
-        <item itemvalue="Python.get_price_info" />
-        <item itemvalue="Python.Parse_yfinance" />
         <item itemvalue="Python.Selenium_yfinance" />
+        <item itemvalue="Python.Selenium_yfinance" />
+        <item itemvalue="Python.Selenium_yfinance" />
+        <item itemvalue="Python.get_price_info" />
+        <item itemvalue="Python.get_price_info" />
       </list>
     </recent_temporary>
   </component>
@@ -323,7 +321,14 @@
       <option name="project" value="LOCAL" />
       <updated>1626140611101</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="Historical asset obnormal change identifying function added in get_price_info.py">
+      <created>1626412771427</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1626412771427</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -351,6 +356,7 @@
     <MESSAGE value="test csv file" />
     <MESSAGE value="Test more files in static folder" />
     <MESSAGE value="Developing sec/yf reporting dates matching algorithm for US located companies." />
-    <option name="LAST_COMMIT_MESSAGE" value="Developing sec/yf reporting dates matching algorithm for US located companies." />
+    <MESSAGE value="Historical asset obnormal change identifying function added in get_price_info.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Historical asset obnormal change identifying function added in get_price_info.py" />
   </component>
 </project>

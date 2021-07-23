@@ -453,10 +453,6 @@ class StockEarning:
 
         plt.hist(pd_asset_end.val_diff, bins=50)
 
-
-
-
-
     def get_sec_earning_data(self, symbols=None):
         """
         Go to SEC website to pull financial files for selected symbols:
@@ -479,7 +475,7 @@ class StockEarning:
             symbols = [i for i in symbols if i not in set(symbols_exclude)]
 
         default_url = 'https://www.sec.gov/edgar/browse/?CIK={}&owner=exclude'
-        driver_path = f'{os.path.dirname(DIR)}/static/analysis/chromedriver.exe'
+        driver_path = f'{os.path.dirname(DIR)}/static/analysis/chromedriver92.exe'
 
         chromeOptions = webdriver.ChromeOptions()
         prefs = {"download.default_directory": dir_download}
