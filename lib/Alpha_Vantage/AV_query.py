@@ -1,15 +1,22 @@
 # Author: Yunsong Xie
 
-
 import requests, os, sqlite3
 import datetime, time
 import pandas as pd
 import numpy as np
-import robin_stocks as rs
+import robin_stocks.robinhood as rs
+
+pd_login = pd.read_csv('D:/login_info.csv')
+pd_login = pd_login.set_index(['website', 'item'])
+dict_login = pd_login.to_dict()['value']
+try:
+    rs.get_fundamentals('AAPL')
+except:
+    rs.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
+             expiresIn=864000000, by_sms=True, backup_code=dict_login['robinhood', 'backup_code'])
 
 DIR = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
-rs.login(username='xieyunsong@gmail.com', password='Mitimt#325',
-         expiresIn=864000000, by_sms=True, backup_code='313749 217812')
+
 
 pd.set_option('display.max_column', 10)
 pd.set_option('display.max_colwidth', 100)
@@ -28,10 +35,8 @@ dict_query_json = {'balance_sheet': 'https://www.alphavantage.co/query?function=
 dict_query_csv = {'earning_calendar_3month': 'https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=3month',
                   'earning_calendar_12month': 'https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=12month', }
 
-API_KEY = 'WWNEDKODZSJ6O6NW'
-API_KEY = 'UVB0DO7YW47OR9E4'
 BASE_URL = 'https://www.alphavantage.co/query?'
-params = {'function': 'cash_flow', 'symbol': 'IBM', 'apikey': API_KEY}
+params = {'function': 'cash_flow', 'symbol': 'IBM', 'apikey': dict_login['alphavantage', 'API_KEY']}
 PATH_DB = f'{DIR}/assets/stock_financial.db'
 # response = requests.get(base_url, params=params)
 # data = response.json()
@@ -55,6 +60,7 @@ class financial_data:
         Returns:
             (Pandas Dataframe): stock fundamental data
         """
+
         csv_list = [i for i in os.listdir(f'{DIR}/assets/csv') if '.csv' == i[-4:] and 'fundamentals' in i]
         label_reload = True
         date_now = datetime.datetime.now()
@@ -136,8 +142,8 @@ class financial_data:
         Returns:
             (Pandas dataframe): final pd_ciq
         """
-        pd_temp = pd.read_csv(f'{os.path.dirname(DIR)}/capitalIQ/static/csv/stock_list/Capital_IQ_exchange.csv', sep='\t')
-        pd_temp['info'] = pd_temp['info'].str.replace('*', '')
+        pd_temp = pd.read_csv(f'{os.path.dirname(os.path.dirname(DIR))}/static/csv/stock_list/Capital_IQ_exchange.csv', sep='\t')
+        pd_temp['info'] = pd_temp['info'].str.replace('*', '', regex=False)
         symbol_list = []
         for i in range(len(pd_temp)):
             info = pd_temp.iloc[i]['info']

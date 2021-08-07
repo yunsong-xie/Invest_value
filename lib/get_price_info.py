@@ -3,6 +3,7 @@ import re, os, time, glob, json
 import datetime
 from bs4 import BeautifulSoup
 import urllib.request
+import requests
 import numpy as np
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
@@ -21,8 +22,11 @@ pd.set_option('display.width', 1000)
 DIR = os.path.dirname(os.path.abspath(__file__))
 
 def make_soup(url):
-    thepage=urllib.request.urlopen(url)
-    soupdata=BeautifulSoup(thepage,"html.parser")
+    agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+    headers = {'User-Agent': agent}
+
+    thepage = requests.get(url, headers=headers)
+    soupdata = BeautifulSoup(thepage.text, "html.parser")
     return soupdata
 
 
@@ -286,6 +290,87 @@ class StockEarning:
 
     def get_earning_dates(self, symbols):
         return self.get_yf_earning_dates(symbols)
+
+    def get_yf_earning_calendar(self, date_start=date(-30), date_end=date(0)):
+        """
+        Get the yahoo finance earning date from the earning calendar pages, return a pandas dataframe
+        Args:
+            date_start (str): starting date of the yf_earning calendar, i.e. 2021-05-01
+            date_end (str): end date of the yf_earning calendar, i.e. 2021-05-01
+
+        Returns:
+            (pandas.dataframe): columns are
+            1. symbol: stock symbol
+            2. date: yahoo finance earning date
+        """
+
+        def parse_symbols(calendar_table_overall, date_current):
+            """
+            Parse the html for yahoo finance earning date calendar
+            Args:
+                calendar_table_overall (bs4.element.Tag): the html content in beautiful soup format
+                date_current: the current date
+
+            Returns:
+                (pandas.dataframe): contains symbol and date
+            """
+            calendar_table = calendar_table_overall.find(id='cal-res-table')
+            calendar_table = calendar_table.find('tbody')
+            calendar_entries = calendar_table.find_all('tr')
+            symbols_calendar = []
+            for calendar_entry in calendar_entries:
+                matched = re.findall('title="">(.+)</a>', str(calendar_entry.find('a')))
+                if len(matched) > 0:
+                    symbols_calendar += matched
+            pd_calendar_output = pd.DataFrame({'symbol': symbols_calendar, 'date': [date_current] * len(symbols_calendar)})
+            return pd_calendar_output
+
+        date_start_input, date_end_input = date_start, date_end
+        path_calendar = f'{os.path.dirname(DIR)}/static/Financial_reports/Calendar/yf_calendar.csv'
+        if os.path.isfile(path_calendar):
+            pd_calendar_ori = pd.read_csv(path_calendar, sep='\t')
+            if date_start <= pd_calendar_ori.date.max():
+                date_start = str(pd.to_datetime(pd_calendar_ori.date.max()) + pd.to_timedelta(f'1 day'))[:10]
+
+            if date_end <= pd_calendar_ori.date.min():
+                date_end = str(pd.to_datetime(pd_calendar_ori.date.min()) - pd.to_timedelta(f'1 day'))[:10]
+        else:
+            pd_calendar_ori = pd.DataFrame()
+
+        _date_start, _date_end = pd.to_datetime(date_start), pd.to_datetime(date_end)
+        num_day = max((_date_end - _date_start).days, 0)
+        calendar_days = [_date_start + pd.to_timedelta(f'{i} day') for i in range(num_day)]
+        pd_calendar_list = [pd_calendar_ori]
+        time_start = time.time()
+        for i_calendar, calendar_day in zip(range(len(calendar_days)), calendar_days):
+            search_day_start, search_day_end = str(calendar_day - pd.to_timedelta(f'6 day'))[:10], str(calendar_day)[:10]
+            _url = f'https://finance.yahoo.com/calendar/earnings?' \
+                   f'from={search_day_start}&to={search_day_end}&day={search_day_end}&size=100'
+            soup = make_soup(_url)
+            calendar_table_overall = soup.find(id='fin-cal-table')
+            entry_num_info = re.findall('of (\d+) results', str(calendar_table_overall))
+
+            if len(entry_num_info) > 0:
+                pd_calendar_list.append(parse_symbols(calendar_table_overall, search_day_end))
+
+                entry_num = int(entry_num_info[0])
+                n_pages = int(np.ceil(entry_num / 100))
+
+                for i_page in range(n_pages - 1):
+                    _url = f'https://finance.yahoo.com/calendar/earnings?' \
+                           f'from={search_day_start}&to={search_day_end}&day={search_day_end}&offset={100*(i_page+1)}&size=100'
+                    soup = make_soup(_url)
+                    calendar_table_overall = soup.find(id='fin-cal-table')
+                    pd_calendar_list.append(parse_symbols(calendar_table_overall, search_day_end))
+            time_span = round(time.time() - time_start)
+            print(f'\rTime: {time_span} s - Complete parsing yahoo-finance Calendar {i_calendar + 1} / {len(calendar_days)}', end='')
+
+        pd_calendar = pd.concat(pd_calendar_list)
+        if len(pd_calendar_list) > 1:
+            pd_calendar.to_csv(path_calendar, index=False, sep='\t')
+        pd_calendar_select = pd_calendar.loc[(pd_calendar.date >= date_start_input) &
+                                             (pd_calendar.date <= date_end_input)]
+        return pd_calendar_select
 
     def get_cik_data(self, force_reload=False):
         """
@@ -849,22 +934,3 @@ class StockPrice(StockEarning):
 
 
 self = StockPrice()
-
-
-if 1==0:
-    symbol = 'GLNG'
-    base_url = f'https://www.zacks.com/stock/research/{symbol}/earnings-announcements'
-    soupdata = make_soup(base_url)
-    entry_class_name0 = 'earnings_announcements_earnings_table_wrapper'
-    entrys = soupdata.find_all(attrs={'class': entry_class_name0})
-
-    df = pd.read_json('C:/Users/yunso/Desktop/CIK0000006732.json')
-    temp = df.to_dict()
-    temp1 = temp['facts']['us-gaap']
-    temp2 = temp1['AccountsPayable']
-
-if 1==1:
-    file = 'C:/Users/Yunsong_i7/Desktop/CIK0001579733.json'
-    pd_data = pd.read_json(file)
-    pd_data.loc['dei'].loc['facts']
-    list(pd_data.loc['us-gaap'].loc['facts'].keys())

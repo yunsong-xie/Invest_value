@@ -261,30 +261,30 @@ if __name__ == '__main__0':
 content = driver.page_source
 
 
-def find_block(content, keyword, block_shift=None):
+def find_block(content, keyword, block_shift=None, sep='div'):
 
     ind_breakdown = content.index(keyword)
 
     if block_shift:
         n_block_shift, block_level = block_shift
         n_block_shift_abs = abs(n_block_shift)
-        if not ((keyword[:4] == '<div') & (n_block_shift == 0)):
+        if not ((keyword[:4] == f'<{sep}') & (n_block_shift == 0)):
             # In the case where this condition not satisfied, no need to do any pre-processing
             if n_block_shift <= 0:
                 content_pre = content[:ind_breakdown]
-                anchor_div_pre = re.finditer('</*div', content_pre)
+                anchor_div_pre = re.finditer(f'</*{sep}', content_pre)
                 matches, ind_start = [], None
                 for _ in anchor_div_pre:
                     matches.append([_.group(), _.start()])
                 count_level, count_shift_n = 0, 0
                 for i, match in zip(range(len(matches)), matches[::-1]):
-                    if (match[0] == '<div') & (i == 0):
+                    if (match[0] == f'<{sep}') & (i == 0):
                         # This is still the same block with the keyword
                         count_level = 0
                         if count_level == n_block_shift:
                             count_shift_n = -1
                     else:
-                        if match[0] == '<div':
+                        if match[0] == f'<{sep}':
                             count_level += 1
                         else:
                             count_level += -1
@@ -296,24 +296,16 @@ def find_block(content, keyword, block_shift=None):
                 if ind_start is None:
                     raise LookupError(f"Can't find the demanded requirments: keyword: {keyword}\n"
                                       f"n_block_shift: {n_block_shift}\n"
-                                      f"block_level: {block_level}"),
+                                      f"block_level: {block_level}")
                 content_trimmed = content[ind_start:]
             else:
                 a=1
 
-
-
-
-
-
-
-
-
     content_trimmed = content[ind_breakdown:]
-    anchor_div = re.finditer('</*div', content_trimmed)
+    anchor_div = re.finditer(f'</*{sep}', content_trimmed)
     count_div, matchs_ind = 0, []
     for _ in anchor_div:
-        if _.group() == '<div':
+        if _.group() == f'<{sep}':
             count_div += 1
         else:
             count_div += -1

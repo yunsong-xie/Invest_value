@@ -217,7 +217,7 @@ if __name__ == '__main__0':
 
 
 def get_pd_yf_growth(force_reload=False):
-    pkl_filename = f'{DIR}/static/analysis/yf_data/pd_yf_growthpkl'
+    pkl_filename = f'{DIR}/static/analysis/yf_data/pd_yf_growth.pkl'
     is_reload = (not os.path.isfile(pkl_filename)) | force_reload
     if not is_reload:
         pd_yf_growth = pd.read_pickle(pkl_filename)
