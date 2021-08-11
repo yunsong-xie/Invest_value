@@ -888,7 +888,7 @@ class StockPrice(StockEarning):
             symbols = [symbols]
         hour = int(str(datetime.datetime.utcnow())[11:13])
         us_business_day = CustomBusinessDay(calendar=USFederalHolidayCalendar())
-        if hour < 21:
+        if (hour < 21) & (hour > 12):
             last_trading_day = str(pd.to_datetime(date(0)) - us_business_day)[:10]
         else:
             # After trading hour

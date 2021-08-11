@@ -5,13 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/static/pygui/Bank.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/static/pygui/Latest_fillings.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/static/pygui/Original_fillings.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/static/pygui/Standard.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parse_financial_excel_20210624.py" beforeDir="false" afterPath="$PROJECT_DIR$/Parse_financial_excel_20210624.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Selenium_SP_Capital_IQ.py" beforeDir="false" afterPath="$PROJECT_DIR$/Selenium_SP_Capital_IQ.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/csv/stock_list/Capital_IQ_exchange.csv" beforeDir="false" afterPath="$PROJECT_DIR$/static/csv/stock_list/Capital_IQ_exchange.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cache/log_file.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cache/log_file.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/pygui/Bank.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/pygui/Standard.png" beforeDir="false" afterPath="$PROJECT_DIR$/static/pygui/Standard.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/pygui/quarterly.png" beforeDir="false" afterPath="$PROJECT_DIR$/static/pygui/quarterly.png" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -77,41 +78,17 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ\static\analysis" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.Selenium_SP_Capital_IQ">
-    <configuration name="Selenium_SP_Capital_IQ" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.Parse_financial_excel_20210624">
+    <configuration name="Parse_financial_excel_20210624" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Selenium_SP_Capital_IQ.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="Selenium_sec_report" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Invest_value" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Selenium_sec_report.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Parse_financial_excel_20210624.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -133,6 +110,24 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Selenium_yfinance.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="get_price_info" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/lib" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib/get_price_info.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -185,11 +180,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.Selenium_SP_Capital_IQ" />
-        <item itemvalue="Python.Selenium_SP_Capital_IQ" />
-        <item itemvalue="Python.Selenium_SP_Capital_IQ" />
-        <item itemvalue="Python.Selenium_SP_Capital_IQ" />
-        <item itemvalue="Python.Selenium_SP_Capital_IQ" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.get_price_info" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
+        <item itemvalue="Python.Parse_financial_excel_20210624" />
       </list>
     </recent_temporary>
   </component>
@@ -352,7 +347,14 @@
       <option name="project" value="LOCAL" />
       <updated>1628372203205</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="Make changes to CIQ selenium program, more stable now.">
+      <created>1628479730446</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1628479730446</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -383,6 +385,7 @@
     <MESSAGE value="Historical asset obnormal change identifying function added in get_price_info.py" />
     <MESSAGE value="Add regular expression based yahoo finance financial report block search, pending finish." />
     <MESSAGE value="Make changes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Make changes" />
+    <MESSAGE value="Make changes to CIQ selenium program, more stable now." />
+    <option name="LAST_COMMIT_MESSAGE" value="Make changes to CIQ selenium program, more stable now." />
   </component>
 </project>

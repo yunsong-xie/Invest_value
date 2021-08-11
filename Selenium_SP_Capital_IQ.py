@@ -27,7 +27,7 @@ pd.set_option('display.max_column', 15)
 pd.set_option('display.max_colwidth', 100)
 pd.set_option('display.width', 1000)
 
-DOWNLOAD_DIR = f'{DIR}\\static\\Financial_reports\\CIQ_FR_{date(0)[:4]}Q{(int(date(0)[5:7]) - 1)//3 + 1}'
+DOWNLOAD_DIR = f'{DIR}\\static\\Financial_reports\\CIQ_FR_{date(0)[:4]}Q{(int(date(0)[5:7]) - 1)//3 + 1}_O'
 if not os.path.isdir(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
 DICT_LOGIN = pd.read_csv('D:/login_info.csv').set_index(['website', 'item']).to_dict()['value']
@@ -320,17 +320,18 @@ def download_section(DRIVER, dict_stock_info, is_view_all=False):
 
         try:
             # Make sure to select the original fillings
-            filename = f'{DIR}/static/pygui/Bank.png'
+            filename = f'{DIR}/static/pygui/Standard.png'
+            _ = cv_find_pic(filename, region=(200, 250, 400, 300), find_thresh_hold=0.0075, trial=1, wait_time=0.5)
+        except:
+            filename = f'{DIR}/static/pygui/Template.png'
             _ = cv_find_pic(filename, region=(200, 250, 400, 300), trial=2, wait_time=1)
-            pygui.click(_[0] + 50, _[1] + 10)
+            pygui.click(_[0] + 150, _[1] + 10)
             pygui.moveTo(500, 500)
             time.sleep(0.25)
             filename = f'{DIR}/static/pygui/Standard.png'
-            _ = cv_find_pic(filename, region=(200, 354, 400, 400), trial=2, wait_time=1)
+            _ = cv_find_pic(filename, region=(200, 250, 400, 400), trial=2, wait_time=1)
             pygui.click(_[0] + 50, _[1] + 10)
             label_button_ok_click = True
-        except:
-            _a = 1
 
         if label_button_ok_click:
             button_ok = DRIVER.find_element_by_id('_pageHeader_TopGoButton')
@@ -453,7 +454,7 @@ class CiqCrawler:
 
     def get_crawl_symbols(self):
         dir_fr = max(glob.glob(f'{DIR}/static/Financial_reports/CIQ_FR_20*'))
-        date_first = str(pd.to_datetime(os.path.basename(dir_fr).split('_')[-1]))[:10]
+        date_first = str(pd.to_datetime(os.path.basename(dir_fr).split('_')[-2]))[:10]
 
         pd_yf_earning_calendar = StockEarning().get_yf_earning_calendar()
         pd_yf_earning_new = pd_yf_earning_calendar.loc[pd_yf_earning_calendar.date >= date_first]
