@@ -27,11 +27,11 @@ pd.set_option('display.max_column', 15)
 pd.set_option('display.max_colwidth', 100)
 pd.set_option('display.width', 1000)
 
-DOWNLOAD_DIR = f'{DIR}\\static\\Financial_reports\\CIQ_FR_{date(0)[:4]}Q{(int(date(0)[5:7]) - 1)//3 + 1}'
+DOWNLOAD_DIR = f'{DIR}\\static\\Financial_reports\\CIQ_FR_{date(0)[:4]}Q{(int(date(0)[5:7]) - 1)//3 + 1}_O'
 if not os.path.isdir(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
 DICT_LOGIN = pd.read_csv('D:/login_info.csv').set_index(['website', 'item']).to_dict()['value']
-
+DEFAULT_URL = 'https://libguides.gatech.edu/go.php?c=22546655'
 
 def set_window_front():
     def window_handler(hwnd, top_windows):
@@ -108,13 +108,20 @@ def initiate_driver():
             except Exception as _:
                 print('No read-only message')
 
-    default_url = 'https://libguides.gatech.edu/go.php?c=22546655'
     driver_path = 'static/analysis/chromedriver92.exe'
+
     options = webdriver.ChromeOptions()
+    options.add_argument("--remote-debugging-port=54123")
+    options.add_argument('--disable-infobars')
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_experimental_option('prefs', {'download.default_directory': DOWNLOAD_DIR})
-    DRIVER = webdriver.Chrome(driver_path, options=options)
+    DRIVER = webdriver.Chrome(driver_path, options=options, service_args=["--verbose"],
+                              service_log_path='chromedriver.log')
+
     set_window_front()
-    capital_iq_login(default_url)
+    capital_iq_login(DEFAULT_URL)
     return DRIVER
 
 
@@ -141,7 +148,10 @@ def go_to_capital_statement_page(DRIVER, dict_stock_info, init_page=1, count_tri
 
     def go_search_symbol(DRIVER):
         time.sleep(0.5)
-        web_wait_element(DRIVER, 'SearchTopBar', time_out=5)
+        found_item = web_wait_element(DRIVER, 'SearchTopBar', time_out=5)
+        if found_item is None:
+            DRIVER.get(DEFAULT_URL)
+            web_wait_element(DRIVER, 'SearchTopBar', time_out=7)
         DRIVER.find_element_by_id('SearchTopBar').send_keys('(' + exchange_ticker + ')')
         time.sleep(0.5)
         DRIVER.find_element_by_id('SearchTopBar').send_keys(Keys.RETURN)
@@ -308,6 +318,21 @@ def download_section(DRIVER, dict_stock_info, is_view_all=False):
         except:
             _a = 1
 
+        try:
+            # Make sure to select the original fillings
+            filename = f'{DIR}/static/pygui/Standard.png'
+            _ = cv_find_pic(filename, region=(200, 250, 400, 300), find_thresh_hold=0.0075, trial=1, wait_time=0.5)
+        except:
+            filename = f'{DIR}/static/pygui/Template.png'
+            _ = cv_find_pic(filename, region=(200, 250, 400, 300), trial=2, wait_time=1)
+            pygui.click(_[0] + 150, _[1] + 10)
+            pygui.moveTo(500, 500)
+            time.sleep(0.25)
+            filename = f'{DIR}/static/pygui/Standard.png'
+            _ = cv_find_pic(filename, region=(200, 250, 400, 400), trial=2, wait_time=1)
+            pygui.click(_[0] + 50, _[1] + 10)
+            label_button_ok_click = True
+
         if label_button_ok_click:
             button_ok = DRIVER.find_element_by_id('_pageHeader_TopGoButton')
             button_ok.click()
@@ -429,7 +454,7 @@ class CiqCrawler:
 
     def get_crawl_symbols(self):
         dir_fr = max(glob.glob(f'{DIR}/static/Financial_reports/CIQ_FR_20*'))
-        date_first = str(pd.to_datetime(os.path.basename(dir_fr).split('_')[-1]))[:10]
+        date_first = str(pd.to_datetime(os.path.basename(dir_fr).split('_')[-2]))[:10]
 
         pd_yf_earning_calendar = StockEarning().get_yf_earning_calendar()
         pd_yf_earning_new = pd_yf_earning_calendar.loc[pd_yf_earning_calendar.date >= date_first]
@@ -463,7 +488,8 @@ if __name__ == '__main__0':
               f'{count_crawled} / {len(exchange_ticker_list)}', end='')
 
         _success, _reset = False, False
-        while (not _success) & (count_reset <= 7):
+        count_reset = 0
+        while (not _success) & (count_reset <= 3):
             # Crawling sequence
             try:
                 if _reset:
@@ -493,13 +519,13 @@ if __name__ == '__main__0':
                 error_msg = traceback.format_exc()
                 print(error_msg)
                 print(f'Fatal Error happend for {symbol}')
-                _reset = True
+                _reset = False
                 pygui.screenshot().save(f'{DIR}/static/selenium/crawling_error/{symbol}_{ciq_crawler.time_now}_FatalError.png')
                 time.sleep(5 + np.random.random() * 5)
-                try:
-                    DRIVER.close()
-                except:
-                    a = 1
+                #try:
+                #    DRIVER.close()
+                #except:
+                #    a = 1
             time.sleep(3 + np.random.random() * 6)
-        if (not _success) & (count_reset <= 7):
-            break
+        if not _success:
+            continue

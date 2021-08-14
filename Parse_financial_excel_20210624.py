@@ -26,26 +26,24 @@ dict_time_name = {'Income Statement': 'For the Fiscal Period Ending',
                   'Ratios': 'For the Fiscal Period Ending',
                   'Segments': 'For the Fiscal Period Ending',
                   'Key Stats': 'For the Fiscal Period Ending', }
-parse_data = [['Balance Sheet', 'Accounts Receivable'],
+parse_data = [['Balance Sheet', 'Filing Date'],
+              ['Balance Sheet', 'Accounts Receivable'],
               ['Balance Sheet', 'Accumulated Depreciation'],
               ['Balance Sheet', 'Long-Term Debt'],
               ['Balance Sheet', 'Long-Term Leases'],
               ['Balance Sheet', 'Total Current Assets'],
               ['Balance Sheet', 'Total Current Liabilities'],
               ['Balance Sheet', 'Total Equity'],
-              ['Balance Sheet', 'Retained Earnings'],
               ['Balance Sheet', 'Total Assets'],
               ['Balance Sheet', 'Total Liabilities'],
               ['Balance Sheet', 'Net Property, Plant & Equipment'],
               ['Balance Sheet', 'Tangible Book Value'],
               ['Balance Sheet', 'Total Cash & ST Investments'],
               ['Balance Sheet', 'Total Shares Out. on Filing Date'],
-              ['Cash Flow', 'Income Statement'],
               ['Cash Flow', 'Cash from Ops.'],
               ['Cash Flow', 'Depreciation & Amort., Total'],
               ['Income Statement', 'Total Revenue'],
               ['Income Statement', 'Operating Income'],
-              ['Income Statement', 'Revenue'],
               ['Income Statement', 'EBIT'],
               ['Income Statement', 'Gross Profit'],
               ['Income Statement', 'Selling General & Admin Exp.'],
@@ -73,11 +71,10 @@ class ParseExcel:
     @staticmethod
     def search_1st_col(sheet, keywords, col_index=0, strict=True):
         if type(keywords) is str:
-            keywords=[keywords]
+            keywords = [keywords]
 
         n_search = 100
         row_keyword = -1
-
         for keyword in keywords:
             try:
                 for i in range(n_search):
@@ -90,7 +87,7 @@ class ParseExcel:
                             row_keyword = i
                             return row_keyword
             except:
-                a=1
+                a = 1
         return row_keyword
 
     def get_dict_symbol(self, workbook):
@@ -102,7 +99,7 @@ class ParseExcel:
         return dict_symbol
 
     def get_row_value(self, pd_sum_symbol, workbook, sheet_id_list='Balance Sheet',
-                      item_id_list='Total Shares Out. on Filing Date', time_list=None):
+                      item_id_list=(), time_list=None):
         """
         This function output pd dataframe there are two cases:
         1. time_list == []: time_list initiation, query "Share Price" row, get the time_list that has available share Price
@@ -110,8 +107,8 @@ class ParseExcel:
                             that is within the "time_list" input
         :param pd_sum_symbol:    Current available pd_sum
         :param workbook:    XLRD Workbook
-        :param sheet_id:    sheet_id or sheet_name
-        :param item_id:     list of row name could belong to this item
+        :param sheet_id_list:    sheet_id or sheet_name
+        :param item_id_list:     list of row name could belong to this item
         :param time_list:   time_list
         :return:    if time_list is []: pd_sum_output, time_list
                     if time_list is not []: pd_sum_output
@@ -124,6 +121,8 @@ class ParseExcel:
             item_id_list = [item_id_list]
         if type(sheet_id_list) is str:
             sheet_id_list = [sheet_id_list]
+        if len(item_id_list) == 0:
+            item_id_list = ['Total Shares Out. on Filing Date']
 
         if not time_list:
             label_base = True
@@ -131,61 +130,64 @@ class ParseExcel:
         else:
             label_base = False
 
-        label_success = 0
-        count_parse = -1
-
-        while (label_success == 0) & (count_parse < len(sheet_id_list) - 1):
-            count_parse += 1
-            sheet_id = sheet_id_list[count_parse]
-            item_id = item_id_list[count_parse]
-
+        if type(pd_sum_symbol) is pd.core.frame.DataFrame:
+            pd_sum_symbol_add_list = [pd_sum_symbol]
+        else:
+            pd_sum_symbol_add_list = []
+        dict_sum = {'sheet_id': [], 'item_id': [], 'value': [], 'time': []}
+        filing_type = 'U'
+        time_list_output = time_list
+        for sheet_id in sheet_id_list:
             sheet_HC = workbook.sheet_by_name(sheet_id)
-            dict_sum = {'sheet_id': [], 'item_id': [], 'value': [], 'time': []}
             time_row_ind = self.search_1st_col(sheet_HC, dict_time_name[sheet_id])
             value_list_ori = sheet_HC.row_values(time_row_ind)
             pattern = '([A-Za-z]*-[0-9]*-[0-9]*)'
             time_list_temp = [re.search(pattern, i) for i in value_list_ori]
+            time_list_temp = [i if i is None else str(pd.to_datetime(i.group()))[:10] for i in time_list_temp]
+            filing_type = workbook.sheet_by_name('Balance Sheet').cell(6, 5).value.split(' ')[0][0]
+            for item_id in item_id_list:
 
-            item_row_num = self.search_1st_col(sheet_HC, item_id)
-            if item_row_num != -1:
-                # The row does exist
-                HC_share_price = sheet_HC.row_values(self.search_1st_col(sheet_HC, item_id))
-                if label_base:
-                    # Base data query, query "Share Price" for time_list initiation
-                    dict_time = {i: time_list_temp[i].group()
-                                 for i in range(len(time_list_temp)) if not (time_list_temp[i] is None)}
-                    dict_share_price = {i: HC_share_price[i] for i in range(len(HC_share_price))
-                                        if not (type(HC_share_price[i]) is str)}
+                item_row_num = self.search_1st_col(sheet_HC, item_id)
+                if item_row_num != -1:
+                    # The row does exist
+                    HC_share_price = sheet_HC.row_values(self.search_1st_col(sheet_HC, item_id))
+                    if item_id == 'Filing Date':
+                        pd_date_start = pd.to_datetime('1899-12-30')
+                        HC_share_price = [str(pd_date_start + pd.to_timedelta(f'{i} days'))[:10]
+                                          if type(i) is float else i for i in HC_share_price ]
+                    if label_base:
+                        # Base data query, query "Share Price" for time_list initiation
+                        dict_time = {i: time_list_temp[i]
+                                     for i in range(len(time_list_temp)) if not (time_list_temp[i] is None)}
+                        dict_share_price = {i: HC_share_price[i] for i in range(len(HC_share_price))
+                                            if not (type(HC_share_price[i]) is str)}
+                    else:
+                        # There is input for time_list query the entries that is within "time_list"
+                        dict_time = {i: time_list_temp[i]
+                                     for i in range(len(time_list_temp)) if not (time_list_temp[i] is None)}
+                        dict_time = {i: dict_time[i] for i in dict_time if dict_time[i] in time_list}
+                        dict_share_price = {i: HC_share_price[i] for i in dict_time}
                 else:
-                    # There is input for time_list query the entries that is within "time_list"
-                    dict_time = {i: time_list_temp[i].group()
-                                 for i in range(len(time_list_temp)) if not (time_list_temp[i] is None)}
-                    dict_time = {i: dict_time[i] for i in dict_time if dict_time[i] in time_list}
-                    dict_share_price = {i: HC_share_price[i] for i in dict_time}
-            else:
-                # The row does not exist
-                dict_time = []
-                dict_share_price = {}
+                    # The row does not exist
+                    dict_time = []
+                    dict_share_price = {}
+                if item_id == 'Total Shares Out. on Filing Date':
+                    time_list_output = [dict_time[i] for i in set(dict_share_price.keys())]
+                for i in list(dict_share_price.keys()):
+                    if dict_share_price[i] != '-':
+                        dict_sum['sheet_id'].append(sheet_id)
+                        dict_sum['item_id'].append(item_id)
+                        dict_sum['value'].append(dict_share_price[i])
+                        dict_sum['time'].append(dict_time[i])
 
-            time_list = [dict_time[i] for i in set(dict_share_price.keys())]
-            item_id_record = item_id_list[0]
-            if type(item_id_record) is list:
-                item_id_record = item_id_record[0]
-            for i in list(dict_share_price.keys()):
-                if dict_share_price[i] != '-':
-                    dict_sum['sheet_id'].append(sheet_id)
-                    dict_sum['item_id'].append(item_id_record.strip())
-                    dict_sum['value'].append(dict_share_price[i])
-                    dict_sum['time'].append(dict_time[i])
+        pd_sum_new = pd.DataFrame(dict_sum)
+        pd_sum_new['filing_type'] = filing_type
+        pd_sum_symbol_add_list.append(pd_sum_new)
 
-            pd_sum_new = pd.DataFrame(dict_sum)
-            if len(pd_sum_new) > 0:
-                label_success = 1
-
-        pd_sum_output = pd.concat([pd_sum_symbol, pd_sum_new])
+        pd_sum_output = pd.concat(pd_sum_symbol_add_list)
 
         if label_base:
-            return pd_sum_output, time_list
+            return pd_sum_output, time_list_output
         else:
             return pd_sum_output
 
@@ -195,15 +197,23 @@ class ParseExcel:
         template=sheet_HC.cell(row_ind, 2).value
         return template
 
-    def main_parse(self):
-        dir_financial_report = max(glob.glob(f'{DIR}/static/Financial_reports/FR_*'))
+    def get_pd_sum(self):
+        self.pd_sum = pd.read_pickle(max(glob.glob(f'{DIR}/static/analysis/CIQ/pd_fr_sum_final*')))
+
+        return self.pd_sum
+
+    def main_parse(self, dir_financial_report=None):
+        if dir_financial_report is None:
+            dir_financial_report = max(glob.glob(f'{DIR}/static/Financial_reports/CIQ_FR_*'))
+        dir_financial_report = 'D:\\PycharmProjects\\Investment\\Invest_value/static/Financial_reports\\CIQ_FR_2021Q2_L'
+        pd_sec_file_date = pd.read_csv(f'{DIR}/static/Financial_reports/sec_filing_date.csv')
         file_log = f"{DIR_CACHE}/log_file.txt"
         log_handle = open(file_log, "w")
         log_filter = MyFilter(log_handle)
 
         count_file = 0
         time_start = time.time()
-        date_fr = os.path.basename(dir_financial_report).split('_')[-1]
+        date_fr = '_'.join(os.path.basename(dir_financial_report).split('_')[-2:])
         xls_files_ori = glob.glob(f'{dir_financial_report}/*.xls')
         count_valid = 0
         pd_sum_list = []
@@ -212,32 +222,50 @@ class ParseExcel:
         list_symbols_not_included = []
         miss_income_list = []
         xls_files = xls_files_ori
-        xls_files = [i for i in xls_files if 'MEDS' in i]
-        for xls_file in xls_files:
-            pd_sum_symbol = pd.DataFrame({'sheet_id': [], 'item_id': [], 'value': [], 'time': []})
+        #xls_files = [i for i in xls_files if 'OFLX' in i]
+        for i_xls, xls_file in zip(range(len(xls_files)), xls_files):
+
             count_file += 1
             workbook = xlrd.open_workbook(xls_file, logfile=log_filter)
             sheetname_list = workbook.sheet_names()
             if 'Income Statement' not in sheetname_list:
                 miss_income_list.append(xls_file)
             dict_symbol = self.get_dict_symbol(workbook)
-            if (dict_symbol['symbol'] not in list_symbols) | (dict_symbol['symbol'] in SYMBOLS_EXCLUDE):
-                list_symbols_not_included.append(dict_symbol['exchange_ticker'])
+            _ipo_date = stock_price.pd_listing.loc[stock_price.pd_listing.symbol == dict_symbol['symbol']].ipoDate
+            label_continue = len(_ipo_date) == 0
+
+            if not label_continue:
+                ipo_date = datetime.datetime.strptime(_ipo_date.iloc[0], '%Y-%m-%d')
+                if str(ipo_date)[:10] > common_func.date(-360):
+                    label_continue = True
+                elif (dict_symbol['symbol'] not in list_symbols) | (dict_symbol['symbol'] in SYMBOLS_EXCLUDE):
+                    list_symbols_not_included.append(dict_symbol['exchange_ticker'])
+                    label_continue = True
+                elif workbook.sheet_by_name('Balance Sheet').cell(6, 2).value != 'Standard':
+                    workbook.release_resources()
+                    os.remove(xls_file)
+                    label_continue = True
+                elif len(stock_price.get_price_range(dict_symbol['symbol'], date_start=common_func.date(-14),
+                                                     date_end=common_func.date(0))) == 0:
+                    label_continue = True
+
+            if label_continue:
                 continue
-            ipo_date = stock_price.pd_listing.loc[stock_price.pd_listing.symbol == dict_symbol['symbol']].ipoDate.iloc[0]
-            ipo_date = datetime.datetime.strptime(ipo_date, '%Y-%m-%d')
+
+            pd_sum_symbol = pd.DataFrame({'sheet_id': [], 'item_id': [], 'value': [], 'time': []})
             pd_sum_symbol, time_list = self.get_row_value(pd_sum_symbol, workbook, sheet_id_list='Key Stats',
                                                           item_id_list='Exchange Rate')
             try:
                 pd_sum_symbol, time_list = self.get_row_value(pd_sum_symbol, workbook)
-                time_list = [i for i in time_list if datetime.datetime.strptime(i,'%b-%d-%Y') >= ipo_date]
+                time_list = [i for i in time_list if i >= str(ipo_date)[:10]]
                 pd_sum_symbol = pd_sum_symbol.loc[pd_sum_symbol.time.isin(time_list)]
-
-                for parse_data_entry in parse_data:
-                    sheet_id_list, item_id_list = parse_data_entry
-                    pd_sum_symbol = self.get_row_value(pd_sum_symbol, workbook, sheet_id_list=sheet_id_list,
-                                                               item_id_list=item_id_list, time_list=time_list)
-                count_valid += 1
+                pd_sheet_item = pd.DataFrame(parse_data, columns=['sheet_id', 'item_id'])
+                for sheet_id in sorted(pd_sheet_item.sheet_id.unique()):
+                    item_id_list = list(pd_sheet_item.loc[pd_sheet_item.sheet_id == sheet_id].item_id)
+                    pd_sum_symbol = self.get_row_value(pd_sum_symbol, workbook, sheet_id_list=sheet_id,
+                                                       item_id_list=item_id_list, time_list=time_list)
+                if type(pd_sum_symbol) is tuple:
+                    continue
             except:
                 fail_list.append(xls_file)
                 continue
@@ -249,10 +277,9 @@ class ParseExcel:
                 pd_sum_symbol[key] = dict_symbol[key]
 
             pd_sum_symbol.time = pd.to_datetime(pd_sum_symbol.time).astype(str).str[:10]
-
+            pd_sum_symbol['time_title'] = pd_sum_symbol['time']
 
             # Get the Share price information
-
             symbol = dict_symbol['symbol']
             time_list = sorted(pd_sum_symbol.time.unique())
             if len(time_list) < 4:
@@ -262,27 +289,36 @@ class ParseExcel:
             # The date parsed here is the fiscal date, not the actual filling date. Only after round 35 days, the report is available
 
             # Get the Accurate original filing date
-            pd_earning = stock_price.get_earning_dates(symbol)
-            pd_earning = pd_earning.loc[pd_earning.time != 'NA']
-            earning_time_list = np.sort(pd_earning.time)
-            if len(earning_time_list) == 0:
-                # There is no earning info returned from yahoo finance
-                continue
             dict_time_real = {'time': [], 'time_real': []}
-            for earn_time in time_list:
-                earning_time_select_list = earning_time_list[earning_time_list > earn_time]
-                if len(earning_time_select_list) > 0:
-                    dict_time_real['time_real'].append(earning_time_select_list[0])
-                    dict_time_real['time'].append(earn_time)
-            pd_sum_symbol = pd_sum_symbol.loc[pd_sum_symbol.time.isin(dict_time_real['time'])]
-            if len(pd_sum_symbol) == 0:
-                # There is no valid financial report dates
-                continue
+            if pd_sum_symbol.iloc[0]['filing_type'] == 'O':
+                pd_filing = pd_sum_symbol.loc[pd_sum_symbol.item_id == 'Filing Date'][['value', 'time']]
+                dict_time_real['time'] = list(pd_filing.time)
+                dict_time_real['time_real'] = [common_func.unix2date(common_func.date2unix(i) + 3600 * 24 * 1)[:10]
+                                               for i in list(pd_filing.value)]
+                dict_time_replace = {dict_time_real['time'][i]: dict_time_real['time_real'][i]
+                                     for i in range(len(dict_time_real['time_real']))}
+                pd_sum_symbol['time'] = pd_sum_symbol['time'].replace(dict_time_replace)
+                pd_sum_symbol = pd_sum_symbol.loc[pd_sum_symbol.item_id != 'Filing Date']
 
-            dict_time_real['time_real'] = [common_func.unix2date(common_func.date2unix(i) + 3600 * 24 * 1)[:10]
-                                           for i in dict_time_real['time_real']]
-            dict_time_replace = {dict_time_real['time'][i]: dict_time_real['time_real'][i]
-                                 for i in range(len(dict_time_real['time_real']))}
+            else:
+                pd_sum_symbol = pd_sum_symbol.loc[pd_sum_symbol.item_id != 'Filing Date']
+                pd_sec_file_date_symbol = pd_sec_file_date.loc[pd_sec_file_date.symbol == symbol]
+                pd_sum_symbol = pd_sum_symbol.loc[pd_sum_symbol.time.isin(list(pd_sec_file_date_symbol.sec_report))].copy()
+
+                if len(pd_sum_symbol) == 0:
+                    # There is no valid financial report dates
+                    continue
+
+                dict_time_real = {'time_real': list(pd_sec_file_date_symbol.sec_file),
+                                  'time': list(pd_sec_file_date_symbol.sec_report)}
+
+
+                dict_time_real['time_real'] = [common_func.unix2date(common_func.date2unix(i) + 3600 * 24 * 1)[:10]
+                                               for i in dict_time_real['time_real']]
+                dict_time_replace = {dict_time_real['time'][i]: dict_time_real['time_real'][i]
+                                     for i in range(len(dict_time_real['time_real']))}
+                pd_sum_symbol['time'] = pd_sum_symbol['time'].replace(dict_time_replace)
+
             try:
                 pd_price = stock_price.get_price_dates(symbol, dates=dict_time_real['time_real'])
             except:
@@ -292,9 +328,8 @@ class ParseExcel:
                 # In this case it was found that if a stock has stopped trading for 14 days, no result is returned,
                 # give up on this stock then
                 continue
-            pd_price['time_request'] = pd_price['time_request'].replace(dict_time_replace)
             pd_price = pd_price.rename(columns={'close': 'Price'})
-            pd_sum_symbol['time'] = pd_sum_symbol['time'].replace(dict_time_replace)
+
 
             pd_stock_share_out = pd_sum_symbol.loc[pd_sum_symbol.item_id == 'Total Shares Out. on Filing Date'].copy()
             pd_market_cap_entry = pd_stock_share_out.merge(pd_price[['time', 'Price']], on='time', how='inner')
@@ -308,6 +343,7 @@ class ParseExcel:
 
             pd_sum_symbol_1 = pd.concat([pd_sum_symbol, pd_market_cap_entry]).drop_duplicates()
 
+            count_valid += 1
             workbook.release_resources()
             pd_sum_list.append(pd_sum_symbol_1)
             time_span = round(time.time() - time_start, 1)
@@ -352,23 +388,37 @@ class ParseExcel:
 
         # Export to pkl
         date_now = common_func.date(0)
-        path_parsed_result = f'{DIR}/static/analysis/excel_data/pd_fr_sum_{date_fr}_{date_now}.pkl'
+        path_parsed_result = f'{DIR}/static/analysis/CIQ/pd_fr_sum_{date_fr}_{date_now}.pkl'
         pd_sum.to_pickle(path_parsed_result)
+        if 1 == 0:
+            pd_fr_sum_files = [i for i in glob.glob(f'{DIR}/static/analysis/CIQ/pd_fr_sum_*') if '_final_' not in i]
+            data_date_list = set([(os.path.basename(i)[10:18], os.path.basename(i)[19:29], i) for i in pd_fr_sum_files])
+            pd_temp = pd.DataFrame(data_date_list, columns=['quarter', 'date', 'path'])
+            pd_fr_sum_file = pd_temp.groupby('quarter')['date'].max().reset_index()
+            pd_fr_sum_file['file_type'] = pd_fr_sum_file.quarter.str[-1]
+            pd_fr_sum_file = pd_fr_sum_file.merge(pd_temp, on=['quarter', 'date'], how='inner')
+            pd_fr_sum_file = pd_fr_sum_file.sort_values(by='quarter', ascending=False)
 
-        pd_fr_sum_files = [i for i in glob.glob(f'{DIR}/static/analysis/excel_data/pd_fr_sum_*') if '_final_' not in i]
-        data_date_list = set([(os.path.basename(i)[10:18], os.path.basename(i)[19:29]) for i in pd_fr_sum_files])
-        pd_temp = pd.DataFrame(data_date_list, columns=['crawl', 'parse'])
-        pd_fr_sum_file = pd_temp.groupby('crawl')['parse'].max().reset_index()
-        pd_sum_final_list = []
-        for i in range(len(pd_fr_sum_file)):
-            crawl_date, parse_date = pd_fr_sum_file.iloc[i][['crawl', 'parse']]
-            path_parsed_result = f'{DIR}/static/analysis/excel_data/pd_fr_sum_{crawl_date}_{parse_date}.pkl'
-            pd_sum_final_list.append(pd.read_pickle(path_parsed_result))
-        pd_sum_final = pd.concat(pd_sum_final_list).drop_duplicates()
-        pd_sum_final.to_pickle(f'{DIR}/static/analysis/excel_data/pd_fr_sum_final_{date_now}.pkl')
+            pd_sum_final_list = []
+            for i in range(len(pd_fr_sum_file)):
+                pkl_path = pd_fr_sum_file.iloc[i]['path']
+                pd_sum_final_list.append(pd.read_pickle(pkl_path))
+            pd_sum_final_1 = pd.concat(pd_sum_final_list).drop_duplicates()
+            pd_sum_final_o = pd_sum_final_1.loc[pd_sum_final_1.filing_type == 'O']
+            pd_sum_final_l_pre = pd_sum_final_1.loc[pd_sum_final_1.filing_type == 'L']
+
+            pd_temp_o = pd_sum_final_o[['time_title', 'symbol']].drop_duplicates()
+            pd_temp_l = pd_sum_final_l_pre[['time_title', 'symbol']].drop_duplicates()
+            pd_temp_o['filing_type'] = 'O'
+            pd_merged = pd_temp_l.merge(pd_temp_o, on=['time_title', 'symbol'], how='outer')
+            pd_merged_na = pd_merged.loc[pd_merged.filing_type.isna()][['time_title', 'symbol']]
+            pd_sum_final_l = pd_sum_final_l_pre.merge(pd_merged_na, on=['time_title', 'symbol'], how='inner')
+
+            pd_sum_final_output = pd.concat([pd_sum_final_o, pd_sum_final_l])
+            pd_sum_final_output.to_pickle(f'{DIR}/static/analysis/CIQ/pd_fr_sum_final_{date_now}.pkl')
 
 
-        return pd_sum_final
+        return pd_sum_final_output
 
 
 self = ParseExcel()
@@ -376,10 +426,11 @@ self = ParseExcel()
 
 if __name__ == '__main__1':
 
+    pd_sum = self.get_pd_sum()
+    symbols = list(pd_sum.symbol.unique())
+    stock_price.update_price_symbol(symbols, force_reload=False)
     self = ParseExcel()
-    pd_sum = self.main_parse()
-    symbols = sorted(pd_sum.symbol.unique())
-    stock_price.update_price_symbol(symbols)
+    #pd_sum = self.main_parse()
 
 
 class MyFilter(object):
@@ -398,7 +449,7 @@ class StockAnalyze:
     @staticmethod
     def get_pd_sum(path_pd_sum=None):
         if path_pd_sum is None:
-            dir_static_analysis = f'{DIR}/static/analysis/excel_data'
+            dir_static_analysis = f'{DIR}/static/analysis/CIQ'
             _files = glob.glob(f'{dir_static_analysis}/pd_fr_sum_final*.pkl')
             path_pd_sum = max(_files)
         pd_sum = pd.read_pickle(path_pd_sum)
@@ -595,7 +646,7 @@ class StockAnalyze:
 
     @staticmethod
     def get_pd_growth():
-        path_growth = max(glob.glob(f'{DIR}/static/analysis/excel_data/pd_data_grow_2*.pkl'))
+        path_growth = max(glob.glob(f'{DIR}/static/analysis/CIQ/pd_data_grow_2*.pkl'))
         pd_data_growth = pd.read_pickle(path_growth)
         pd_data_growth = pd_data_growth.rename(columns={'year': 'time'})
         return pd_data_growth
@@ -783,8 +834,8 @@ class StockAnalyze:
         return pd_stock_bs, dict_act_date
 
 
-def get_pd_growth(pd_sum_select, dict_extra_info, dict_item_id, n_year=2, mp_id=0, mp_queue=None):
-
+def get_pd_growth(pd_sum_sec, dict_extra_info, dict_item_id, n_year=2, mp_id=0, mp_queue=None):
+    pd_sum_select = pd_sum_sec
     item_id_list = list(dict_item_id.values())
     time_start = time.time()
     pd_item_growth_list = []
@@ -878,16 +929,15 @@ if __name__ == '__main__0':
     pd_exchange_ticker = pd_exchange_ticker.loc[pd_exchange_ticker > n_quarters_min].rename('num').reset_index()
     pd_exchange_ticker = pd_exchange_ticker.sort_values(by='num')
     exchange_ticker_list = list(pd_exchange_ticker.exchange_ticker)
-    pd_sum_select = pd_sum.loc[pd_sum.exchange_ticker.isin(exchange_ticker_list)]
+    pd_sum_select_1 = pd_sum.loc[pd_sum.exchange_ticker.isin(exchange_ticker_list)]
     # np.random.shuffle(exchange_ticker_list)
     extra_info = {'Tangible Book Value': 'PB', 'Total Current Assets': 'MC_TCA'}
     dict_extra_info = {}
     for key in extra_info:
-
-        pd_pb, ratio_col_name = stock_an.get_stock_ratio(pd_sum_select, item_id_x=key,
+        pd_pb, ratio_col_name = stock_an.get_stock_ratio(pd_sum_select_1, item_id_x=key,
                                                          item_id_y='Market Cap', col_val='value')
         pd_pb = pd_pb.rename(columns={ratio_col_name: extra_info[key], 'time': 'year'})
-        pd_pb = pd_pb[['exchange_ticker', 'year', extra_info[key]]]
+        pd_pb = pd_pb.groupby(['exchange_ticker', 'year'])[extra_info[key]].mean().reset_index()
         dict_extra_info[extra_info[key]] = pd_pb
 
     mp_queue = mp.Queue()
@@ -898,7 +948,7 @@ if __name__ == '__main__0':
     for i in range(n_process):
         n_total, n_sec = len(exchange_ticker_list), len(exchange_ticker_list) // n_process + 1
         exchange_ticker_list_sec = exchange_ticker_list[i::n_process]
-        pd_sum_sec = pd_sum_select.loc[pd_sum_select.exchange_ticker.isin(exchange_ticker_list_sec)]
+        pd_sum_sec = pd_sum_select_1.loc[pd_sum_select_1.exchange_ticker.isin(exchange_ticker_list_sec)]
         mp.Process(target=get_pd_growth, args=(pd_sum_sec, dict_extra_info, dict_item_id, n_year, i, mp_queue)).start()
 
     while len(dict_progress['result']) != n_process:
@@ -925,8 +975,8 @@ if __name__ == '__main__0':
     pd_data_growth = pd_data_growth.merge(dict_extra_info['MC_TCA'].rename(columns={'year': 'time'}),
                                           on=['exchange_ticker', 'time'], how='inner')
 
-    pd_data_growth.to_pickle(f'{DIR}/static/analysis/excel_data/pd_data_grow_{common_func.date(0)}.pkl')
-    pd_item_id.to_pickle(f'{DIR}/static/analysis/excel_data/pd_data_grow_item_id_{common_func.date(0)}.pkl')
+    pd_data_growth.to_pickle(f'{DIR}/static/analysis/CIQ/pd_data_grow_{common_func.date(0)}.pkl')
+    pd_item_id.to_pickle(f'{DIR}/static/analysis/CIQ/pd_data_grow_item_id_{common_func.date(0)}.pkl')
 
 
 def cal_trading_weight(pd_price_fine_symbol, min_growth=0.3, max_growth=20, growth_slope=35, max_pb_1=5, max_pb_2=35):
@@ -1025,22 +1075,27 @@ def bu_se_2_profit_fine(dict_pd_stock_bs, pd_stock_bs, n_stock_max=5, n_stock_sh
 
 if __name__ == '__main__':
 
-    dict_filter = {'>': [['growth_C', 0.4], ['growth-1_C', 0.2], ['MC_TCA', 5], ['growth_A', 'growth-1_A'],
+    dict_filter = {'>': [['growth_C', 0.4], ['growth-1_C', 0.2], ['MC_TCA', 5.5], ['growth_A', 'growth-1_A'],
                          ['growth_A', 0], ['growth-1_A', 0],
                          ['growth_B', 0], ['growth-1_B', 0],
                          ['growth_C', 0], ['growth-1_C', 0],
                          ['growth_D', 0], ['growth-1_D', 0],
                          ['growth_E', 0], ['growth-1_E', 0],
-                         ['MC_TCA', 5], ['PB', 5],
+                         ['MC_TCA', 5.5], ['PB', 5.5],
                          ],
                    '<': [['MC_TCA', 50], ['PB', 50]]}
 
-    n_stock_max = 5
+    n_stock_max = 6
     n_stock_shift = 0
-    pd_growth_ori = stock_an.get_pd_growth()
-    pd_growth_1 = stock_an.get_pd_growth_filtered(pd_growth_ori, dict_filter=dict_filter)
+    pd_growth_ori = stock_an.get_pd_growth().drop_duplicates()
+    pd_size = pd_growth_ori.groupby(['exchange_ticker', 'time']).size()
+    pd_size_1 = pd_size.loc[pd_size == 1].rename('num').reset_index()[['exchange_ticker', 'time']]
+    pd_growth_ori = pd_growth_ori.merge(pd_size_1, on=['exchange_ticker', 'time'], how='inner')
+    #pd_growth_ori = pd_growth_ori.merge()
+
+    pd_growth_1 = stock_an.get_pd_growth_filtered(pd_growth_ori, dict_filter=dict_filter).drop_duplicates()
     pd_stock_bs_ori, dict_act_date = stock_an.get_stock_bs(pd_growth_1, cal_trading_weight, is_update_weight=False,
-                                                                is_only_first=True)
+                                                           is_only_first=True)
     pd_stock_bs_ori['time'] = pd_stock_bs_ori['time'].astype(str).str[:10]
     pd_stock_bs_ori['time_financial'] = pd_stock_bs_ori['time_financial'].astype(str).str[:10]
     time_act_list = list(pd_stock_bs_ori.loc[pd_stock_bs_ori.act].time)
@@ -1071,13 +1126,13 @@ if __name__ == '__main__':
         pd_temp_list.append(pd_temp.loc[pd_temp_diff.loc[(pd_temp_diff.abs()>0)|(pd_temp_diff.isna())].index])
     pd_stock_temp_final = pd.concat(pd_temp_list).sort_values(by=['time', 'symbol'])
 
-    usd_total = 50324
+    usd_total = 143588
     _dict_recommend_val, _dict_recommend_num = pd_reward.iloc[-2].hold_val, pd_reward.iloc[-2].hold_num
     _keys = list(_dict_recommend_val.keys())
     dict_recommend = {'symbol': _keys, 'num': [_dict_recommend_num[i] for i in _dict_recommend_num]}
     pd_recommend = pd.DataFrame(dict_recommend)
     pd_price_info = pd_stock_bs.loc[pd_stock_bs.time == pd_stock_bs.time.max()]
-    pd_recommend = pd_recommend.merge(pd_price_info, on='symbol', how='inner')[['symbol', 'Price', 'num']].drop_duplicates()
+    pd_recommend = pd_recommend.merge(pd_price_info, on='symbol', how='left')[['symbol', 'Price', 'num']].drop_duplicates()
     pd_recommend['usd'] = pd_recommend['Price'] * pd_recommend['num']
     _rate = usd_total / pd_recommend.usd.sum()
     pd_recommend[['usd', 'num']] = pd_recommend[['usd', 'num']] * _rate
