@@ -433,8 +433,6 @@ if __name__ == '__main__1':
     #pd_sum = self.main_parse()
 
 
-
-
 class MyFilter(object):
     def __init__(self, mylogfile=sys.stdout):
         self.f = mylogfile
@@ -1087,7 +1085,7 @@ if __name__ == '__main__':
                          ],
                    '<': [['MC_TCA', 50], ['PB', 50]]}
 
-    n_stock_max = 5
+    n_stock_max = 6
     n_stock_shift = 0
     pd_growth_ori = stock_an.get_pd_growth().drop_duplicates()
     pd_size = pd_growth_ori.groupby(['exchange_ticker', 'time']).size()
@@ -1128,13 +1126,13 @@ if __name__ == '__main__':
         pd_temp_list.append(pd_temp.loc[pd_temp_diff.loc[(pd_temp_diff.abs()>0)|(pd_temp_diff.isna())].index])
     pd_stock_temp_final = pd.concat(pd_temp_list).sort_values(by=['time', 'symbol'])
 
-    usd_total = 135000
-    _dict_recommend_val, _dict_recommend_num = pd_reward.iloc[-3].hold_val, pd_reward.iloc[-2].hold_num
+    usd_total = 143588
+    _dict_recommend_val, _dict_recommend_num = pd_reward.iloc[-2].hold_val, pd_reward.iloc[-2].hold_num
     _keys = list(_dict_recommend_val.keys())
     dict_recommend = {'symbol': _keys, 'num': [_dict_recommend_num[i] for i in _dict_recommend_num]}
     pd_recommend = pd.DataFrame(dict_recommend)
     pd_price_info = pd_stock_bs.loc[pd_stock_bs.time == pd_stock_bs.time.max()]
-    pd_recommend = pd_recommend.merge(pd_price_info, on='symbol', how='inner')[['symbol', 'Price', 'num']].drop_duplicates()
+    pd_recommend = pd_recommend.merge(pd_price_info, on='symbol', how='left')[['symbol', 'Price', 'num']].drop_duplicates()
     pd_recommend['usd'] = pd_recommend['Price'] * pd_recommend['num']
     _rate = usd_total / pd_recommend.usd.sum()
     pd_recommend[['usd', 'num']] = pd_recommend[['usd', 'num']] * _rate

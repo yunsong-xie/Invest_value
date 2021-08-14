@@ -488,6 +488,7 @@ if __name__ == '__main__0':
               f'{count_crawled} / {len(exchange_ticker_list)}', end='')
 
         _success, _reset = False, False
+        count_reset = 0
         while (not _success) & (count_reset <= 3):
             # Crawling sequence
             try:
