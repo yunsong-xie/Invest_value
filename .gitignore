@@ -3,3 +3,5 @@
 **/*.pptx
 **/*.exe
 **/*.zip
+**/.idea/*
+**/.ipynb_checkpoints/*
