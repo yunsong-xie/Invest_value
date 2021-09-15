@@ -13,7 +13,9 @@ try:
     rs.get_fundamentals('AAPL')
 except:
     rs.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
-             expiresIn=864000000, by_sms=True, backup_code=dict_login['robinhood', 'backup_code'])
+             expiresIn=86400, by_sms=True)
+
+AV_API_KEY = dict_login['alphavantage', 'API_KEY']
 
 DIR = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
 
@@ -210,7 +212,7 @@ class financial_data:
 
     @staticmethod
     def get_AV_data(table, symbol):
-        params = {'function': table, 'symbol': symbol, 'apikey': API_KEY}
+        params = {'function': table, 'symbol': symbol, 'apikey': AV_API_KEY}
         response = requests.get(BASE_URL, params=params)
         AV_data = response.json()
         return AV_data

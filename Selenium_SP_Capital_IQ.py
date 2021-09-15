@@ -365,6 +365,7 @@ class CiqCrawler:
         self.pd_ciq_id, self.pd_crawl_info = self.record_crawling_info('init')
         self.dict_ciq_id = {i: list(self.pd_ciq_id[i]) for i in self.pd_ciq_id.keys()}
         self.dict_crawl_status = {i: list(self.pd_crawl_info[i]) for i in self.pd_crawl_info.keys()}
+        self.exchange_ticker_list = []
 
     def record_crawling_info(self, command, dict_crawl_info=None):
         """
@@ -424,6 +425,7 @@ class CiqCrawler:
         """
         av_session = Alpha_Vantage.financial_data()
         exchange_ticker_list = list(av_session.pd_ciq.exchange_ticker)
+        self.exchange_ticker_list = exchange_ticker_list
 
         files = set(os.listdir(DOWNLOAD_DIR))
         exchange_ticker_list_exist = []
@@ -464,15 +466,28 @@ class CiqCrawler:
     def time_now(self):
         return str(datetime.datetime.now())[:19].replace(':', '-')
 
+    def output_ticker(self):
+        dir_csv = f'{DIR}/static/csv/tickers'
+        num = 8000
+        n_file = len(self.exchange_ticker_list) // num + 1
+        tickers = [i.split(':')[-1] for i in self.exchange_ticker_list]
+        for i in range(n_file):
+            ind_1, ind_2 = num * i, num * (i + 1)
+            tickers_file = tickers[ind_1: ind_2]
+            pd_data = pd.DataFrame({tickers_file[0]: tickers_file[1:]})
+            pd_data.to_csv(f'{dir_csv}/{i}.csv', index=False)
+
 
 ciq_crawler = CiqCrawler()
 self = ciq_crawler
+
 
 if __name__ == '__main__0':
 
     DRIVER = initiate_driver()
 
     exchange_ticker_list = ciq_crawler.get_missing_xls()
+    exchange_ticker_all_list = ciq_crawler.exchange_ticker_list
 
     count_crawled, count_reset, time_error_start = 0, 0, 10 ** 9
     time_start = time.time()

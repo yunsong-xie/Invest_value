@@ -116,6 +116,9 @@ def parse_yahoo_data(soup):
         # print(header, len(info_list))
 
     pd_result = pd_result.rename(columns={'timestamp': 'time'})
+    pd_result.loc[pd_result.close == 0, 'close'] = 0.000000001
+    pd_result[['open', 'high', 'low', 'close']] = pd_result[['open', 'high', 'low', 'close']] / \
+                                                  pd_result['adjclose'] * pd_result['close']
 
     return pd_result
 
@@ -743,11 +746,6 @@ class StockEarning:
         pd_detail.to_csv(f'{os.path.dirname(DIR)}/static/Financial_reports/sec_filling_date.csv', index=False)
 
 
-
-
-
-
-
 class StockPrice(StockEarning):
     """
     Includes functions to pull price as well as earning info
@@ -778,7 +776,7 @@ class StockPrice(StockEarning):
             self.pd_listing.to_pickle(path_listing)
         return self.pd_listing
 
-    def get_price_range(self, symbol, date_start='1995-01-01', date_end=None, source='local', time_type='sec'):
+    def get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local', time_type='sec'):
         """
         Obtain intraday price info for selected symbol, this function only get the range defined by date_start, and date_end
         Args:
@@ -876,7 +874,7 @@ class StockPrice(StockEarning):
                 pd_data_output = pd_data_date_1
         return pd_data_output
 
-    def update_price_symbol(self, symbols, time_hard_start='1995-01-01', force_reload=False):
+    def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False):
         """
         Update the local pkl stored historical intraday price information of provided list of symbols
         Args:
