@@ -4,3 +4,4 @@
 **/*.exe
 **/*.zip
 **/.ipynb_checkpoints/*
+**/*.db

@@ -1,5 +1,5 @@
 # Author: Yunsong Xie
-import re, os, time, glob, json
+import re, os, time, glob, json, sqlite3
 import datetime
 from bs4 import BeautifulSoup
 import urllib.request
@@ -20,6 +20,7 @@ pd.set_option('display.max_column', 15)
 pd.set_option('display.max_colwidth', 100)
 pd.set_option('display.width', 1000)
 DIR = os.path.dirname(os.path.abspath(__file__))
+PATH_DB = r'D:\PycharmProjects\Investment\Invest_value\static\Financial_reports\Wharton\fr_wharton.db'
 
 def make_soup(url):
     agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
@@ -116,9 +117,6 @@ def parse_yahoo_data(soup):
         # print(header, len(info_list))
 
     pd_result = pd_result.rename(columns={'timestamp': 'time'})
-    pd_result.loc[pd_result.close == 0, 'close'] = 0.000000001
-    pd_result[['open', 'high', 'low', 'close']] = pd_result[['open', 'high', 'low', 'close']] / \
-                                                  pd_result['adjclose'] * pd_result['close']
 
     return pd_result
 
@@ -759,6 +757,7 @@ class StockPrice(StockEarning):
 
         self.dict_pd_price = {}
         self.pd_cik = None
+        self.con = sqlite3.connect(PATH_DB)
 
     def get_listing_info(self):
         """
@@ -776,7 +775,218 @@ class StockPrice(StockEarning):
             self.pd_listing.to_pickle(path_listing)
         return self.pd_listing
 
-    def get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local', time_type='sec'):
+    def get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local'):
+        """
+        Obtain intraday price info for selected symbol, this function only get the range defined by date_start, and date_end
+        Args:
+            symbol (str): Stock symbol
+            date_start (str): Starting date
+            date_end (str): end date (default: None)
+            source (str): the source of this inquery, either online or local
+
+        Returns:
+            pandas.dataframe: The price info for the selected dates, in the case of the symbol does not exist,
+                return None.
+        """
+
+        unix_start = date2unix(date_start)
+        if not date_end:
+            unix_end = get_timestamp_now()
+        else:
+            unix_end = date2unix(date_end)
+        date_end = unix2date(unix_end)[:10]
+
+        if source == 'online':
+            url = f'https://query1.finance.yahoo.com/v7/finance/chart/' \
+                  f'{symbol}?period1={unix_start}&period2={unix_end}&interval=1d'
+
+            soup = make_soup(url)
+
+            if len(str(soup)) > 770:
+                pd_data = parse_yahoo_data(soup)
+                pd_data['symbol'] = symbol
+            else:
+                keys = ['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose', 'symbol']
+                pd_data = pd.DataFrame({i:[] for i in keys})
+
+            if str(pd_data.time.dtypes) == 'object':
+                pd_data.time = pd_data.time.str[:10]
+
+        elif source == 'local':
+
+            command_query = f"""select time, close, adjclose from price where
+                tic = "{symbol}"
+                and time >= '{date_start}'
+                and time <= '{date_end}'
+                order by time
+            """
+            pd_data = pd.read_sql(command_query, self.con)
+
+        else:
+            raise ValueError("Source has to be either 'online' or 'local'. ")
+
+        return pd_data
+
+    def get_price_dates(self, symbol, dates, n_shift=0):
+        if type(dates) is str:
+            dates = [dates]
+        if n_shift:
+            dates = [unix2date(date2unix(i) + 3600 * 24 * n_shift)[:10] for i in dates]
+
+        if type(symbol) is str:
+            symbols = [symbol]
+        else:
+            symbols = symbol
+
+        array_symbol = list(set(symbols)) * len(dates)
+        array_date = sorted(list(set(dates)) * len(symbols))
+
+        pd_query = pd.DataFrame({'tic': array_symbol, 'time': array_date})
+        pd_result = self.get_price_pd_query(pd_query)
+
+        return pd_result
+
+    def get_price_pd_query(self, pd_input):
+
+        pd_buff = pd_input.rename(columns={'symbol': 'tic', 'rdq': 'time'})[['tic', 'time']].drop_duplicates()
+
+        data_buff = pd_buff[['tic', 'time']].values
+        command_insert = """insert into buff (tic, time) values """
+        for entry in data_buff:
+            command_insert += f"""("{entry[0]}", "{entry[1]}"), \n"""
+        if '\n' in command_insert:
+            command_insert = command_insert[:-3]
+            self.con.execute(command_insert)
+
+        command = """with filter as (
+            select t1.tic, t1.time as time_request, min(t2.time) as time 
+            from buff t1, price t2
+            where t1.tic = t2.tic
+            and t2.time >= t1.time
+            group by t1.tic, t1.time
+        )
+        select t1.*, t2.close, t2.adjclose from 
+        filter t1 inner join price t2 
+        on t1.time = t2.time
+        and t1.tic = t2.tic
+        """
+        pd_query = pd.read_sql(command, self.con)
+
+        self.con.rollback()
+
+        return pd_query
+
+    def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False):
+        """
+        Update the local pkl stored historical intraday price information of provided list of symbols
+        Args:
+            symbols (str/list): Stock symbol of interested
+            time_hard_start: Hard intraday time starting date
+
+        """
+        if type(symbols) is str:
+            symbols = [symbols]
+        time_now_utc = str(datetime.datetime.utcnow())
+        hour = int(str(time_now_utc)[11:13]) + int(str(time_now_utc)[14:16])/60 + int(str(time_now_utc)[17:18])/3600
+        us_business_day = CustomBusinessDay(calendar=USFederalHolidayCalendar())
+        if hour >= 21:
+            # Today the trading has completed
+            last_trading_day = time_now_utc[:10]
+        else:
+            # Today the trading has NOT completed
+            last_trading_day = str(pd.to_datetime(time_now_utc[:10]) - us_business_day)[:10]
+
+        time_start = time.time()
+        command_query = f"""select tic, max(time) as last_time from price
+        where tic in ("{'", "'.join(symbols)}")
+        group by tic"""
+        pd_last = pd.read_sql(command_query, self.con)
+        pd_last = pd_last.set_index('tic')
+        dict_last = pd_last['last_time'].to_dict()
+
+        for i_symbol, symbol in zip(range(len(symbols)), symbols):
+            pd_listing_entry = self.pd_listing.loc[self.pd_listing.symbol == symbol]
+
+            is_updated = False
+            ipo_date = max(pd_listing_entry.iloc[0].ipoDate, time_hard_start)
+
+            if (symbol not in dict_last) | force_reload:
+                last_date = unix2date(date2unix(ipo_date) - 3600 * 24)[:10]
+            else:
+                last_date = dict_last[symbol]
+                if last_date >= last_trading_day:
+                    is_updated = True
+
+                if check_abnormal:
+                    command_query = f"""select time from price where tic = "{symbol}" """
+                    pd_abnormal = pd.read_sql(command_query, self.con)
+                    max_diff_days = pd.to_datetime(pd_abnormal.time).diff().dt.days.max()
+                    if max_diff_days > 90:
+                        # THere is a problem with the data and it needs to be reloaded
+                        last_date = unix2date(date2unix(ipo_date) - 3600 * 24)[:10]
+                        is_updated = False
+
+            if not is_updated:
+                query_date_start = unix2date(date2unix(last_date) + 3600 * 24)[:10]
+                pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
+
+                if len(pd_price) > 0:
+                    pd_price['time'] = pd_price['time'].str[:10]
+                    pd_price = pd_price.loc[pd_price.time >= query_date_start]
+
+                    pd_price = pd_price[['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']].drop_duplicates()
+                    data = pd_price.values
+                    command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
+                    for entry in data:
+                        command += f'("{symbol}", "{entry[0]}", {entry[1]}, {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}), \n'
+                    if '\n' in command:
+                        command = command[:-3]
+                        self.con.execute(command)
+                        self.con.commit()
+
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)}', end='')
+
+    def __get_price_dates(self, symbol, dates, n_shift=0):
+        """
+        Obtain intraday price info for selected symbol, this function only get the info for the dates specified by "dates"
+        Args:
+            symbol: Stock symbol
+            dates (str/list): dates for the info needed.
+            n_shift: (int): days needs to be shifted from the requested dates, default: 0
+
+        Returns:
+            pandas.dataframe: The price info for the selected dates
+        """
+        if type(dates) is str:
+            dates = [dates]
+        if n_shift:
+            dates = [unix2date(date2unix(i) + 3600 * 24 * n_shift)[:10] for i in dates]
+
+        pd_data_2_list = []
+        date_start_temp = unix2date(date2unix(min(dates)) - 3600 * 24 * 1)[:10]
+        date_end_temp = unix2date(date2unix(max(dates)) + 3600 * 24 * 14)[:10]
+        pd_data_date = self.get_price_range(symbol, date_start=date_start_temp, date_end=date_end_temp)
+
+        pd_data_date_1 = pd_data_date.loc[pd_data_date.time.isin(dates)].copy()
+        pd_data_date_1['time_request'] = pd_data_date_1['time']
+        dates_miss = [i for i in dates if (i not in list(pd_data_date_1.time)) & (i <= max(pd_data_date.time)) &
+                      (i >= min(pd_data_date.time))]
+        if dates_miss:
+            dates_miss_end = unix2date(date2unix(max(dates_miss)) + 3600 * 24 * 14)[:10]
+            pd_data_date_2_ori = pd_data_date.loc[(pd_data_date.time > min(dates_miss)) & (pd_data_date.time <= dates_miss_end)]
+            for _date in dates_miss:
+                pd_data_date_temp = pd_data_date_2_ori.loc[pd_data_date_2_ori.time>_date].iloc[[0]].copy()
+                pd_data_date_temp['time_request'] = _date
+                pd_data_2_list.append(pd_data_date_temp)
+            pd_data_2_list.append(pd_data_date_1)
+            pd_data_output = pd.concat(pd_data_2_list)
+        else:
+            pd_data_output = pd_data_date_1
+
+        return pd_data_output
+
+    def __get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local', time_type='sec'):
         """
         Obtain intraday price info for selected symbol, this function only get the range defined by date_start, and date_end
         Args:
@@ -833,48 +1043,7 @@ class StockPrice(StockEarning):
 
         return pd_data
 
-    def get_price_dates(self, symbol, dates, n_shift=0):
-        """
-        Obtain intraday price info for selected symbol, this function only get the info for the dates specified by "dates"
-        Args:
-            symbol: Stock symbol
-            dates (str/list): dates for the info needed.
-            n_shift: (int): days needs to be shifted from the requested dates, default: 0
-
-        Returns:
-            pandas.dataframe: The price info for the selected dates
-        """
-        if type(dates) is str:
-            dates = [dates]
-        if n_shift:
-            dates = [unix2date(date2unix(i) + 3600 * 24 * n_shift)[:10] for i in dates]
-
-        pd_data_output = self.get_price_range(symbol, date_start=date(-14), date_end=date(0))
-        if len(pd_data_output) > 0:
-            pd_data_2_list = []
-            date_start_temp = unix2date(date2unix(min(dates)) - 3600 * 24 * 14)[:10]
-            date_end_temp = unix2date(date2unix(max(dates)) + 3600 * 24 * 14)[:10]
-            pd_data_date = self.get_price_range(symbol, date_start=date_start_temp, date_end=date_end_temp)
-            pd_data_date['time'] = pd_data_date['time'].str[:10]
-            pd_data_date_1 = pd_data_date.loc[pd_data_date.time.isin(dates)].copy()
-            pd_data_date_1['time_request'] = pd_data_date_1['time']
-            dates_miss = [i for i in dates if (i not in list(pd_data_date_1.time)) & (i <= max(pd_data_date.time)) &
-                          (i >= min(pd_data_date.time))]
-            if dates_miss:
-                dates_miss_end = unix2date(date2unix(max(dates_miss)) + 3600 * 24 * 14)[:10]
-                pd_data_date_2_ori = pd_data_date.loc[(pd_data_date.time > min(dates_miss)) & (pd_data_date.time <= dates_miss_end)]
-                data_date = np.asarray(pd_data_date_2_ori.time)
-                for _date in dates_miss:
-                    pd_data_date_temp = pd_data_date_2_ori.loc[pd_data_date_2_ori.time>_date].iloc[[0]].copy()
-                    pd_data_date_temp['time_request'] = _date
-                    pd_data_2_list.append(pd_data_date_temp)
-                pd_data_2_list.append(pd_data_date_1)
-                pd_data_output = pd.concat(pd_data_2_list)
-            else:
-                pd_data_output = pd_data_date_1
-        return pd_data_output
-
-    def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False):
+    def __update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False):
         """
         Update the local pkl stored historical intraday price information of provided list of symbols
         Args:
@@ -910,7 +1079,10 @@ class StockPrice(StockEarning):
                     last_date = unix2date(date2unix(ipo_date)-3600*24)[:10]
                 else:
                     pd_price_ori = pd.read_pickle(path_pkl)
-                    last_date = pd_price_ori.time.max()[:10]
+                    if len(pd_price_ori) > 0:
+                        last_date = pd_price_ori.time.max()[:10]
+                    else:
+                        last_date = time_hard_start
                     if last_date >= last_trading_day:
                         is_updated = True
 
@@ -929,6 +1101,29 @@ class StockPrice(StockEarning):
                 pd_price.to_pickle(path_pkl)
             time_span = round(time.time() - time_start, 1)
             print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)}', end='')
+
+    def __init_upload_price(self):
+
+        pd_symbols = pd.read_sql("select distinct tic from report", self.con)
+        symbols = sorted(pd_symbols['tic'])
+
+        time_start = time.time()
+        for i_symbol, symbol in enumerate(symbols):
+            path_pkl = f'{self.dir_price}/{symbol}.pkl'
+            pd_price = pd.read_pickle(path_pkl)
+            pd_price['time'] = pd_price['time'].str[:10]
+
+            pd_price = pd_price[['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']].drop_duplicates()
+            data = pd_price.values
+            command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
+            for entry in data:
+                command += f'("{symbol}", "{entry[0]}", {entry[1]}, {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}), \n'
+            if '\n' in command:
+                command = command[:-3]
+                self.con.execute(command)
+                self.con.commit()
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rTime: {time_span} s - progress {i_symbol + 1}/{len(symbols)}', end='')
 
 
 self = StockPrice()
