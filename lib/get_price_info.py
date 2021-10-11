@@ -15,12 +15,13 @@ import io
 from matplotlib import pyplot as plt
 
 from selenium import webdriver
+from lib import misc
 
 pd.set_option('display.max_column', 15)
 pd.set_option('display.max_colwidth', 100)
 pd.set_option('display.width', 1000)
 DIR = os.path.dirname(os.path.abspath(__file__))
-PATH_DB = r'D:\PycharmProjects\Investment\Invest_value\static\Financial_reports\Wharton\fr_wharton.db'
+
 
 def make_soup(url):
     agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
@@ -29,7 +30,6 @@ def make_soup(url):
     thepage = requests.get(url, headers=headers)
     soupdata = BeautifulSoup(thepage.text, "html.parser")
     return soupdata
-
 
 
 def web_wait_element(driver, element_type='id', element_value='', time_out=5):
@@ -757,7 +757,7 @@ class StockPrice(StockEarning):
 
         self.dict_pd_price = {}
         self.pd_cik = None
-        self.con = sqlite3.connect(PATH_DB)
+        self.con = misc.get_sql_con()
 
     def get_listing_info(self):
         """
@@ -920,7 +920,7 @@ class StockPrice(StockEarning):
         pd_last = pd_last.loc[pd_last.tic.isin(symbols)]
         pd_last = pd_last.set_index('tic')
         dict_last = pd_last['last_time'].to_dict()
-        batch_size = 10000
+        batch_size = 1000
         pd_price_upload_list = []
         batch_cur_size = 0
 
@@ -934,9 +934,19 @@ class StockPrice(StockEarning):
                 pd_price_upload = pd.concat(_pd_price_upload_list).drop_duplicates()
                 if len(pd_price_upload) > 0:
                     data = pd_price_upload.values
-                    command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
+                    command_ori = 'insert into price ("tic", "time", "open", "high", "low", "volume", "close", "adjclose") values '
+                    command = command_ori
+                    count = 0
                     for entry in data:
-                        command += f'("{entry[0]}", "{entry[1]}", {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}, {entry[7]}), \n'
+                        command += f"(N'{entry[0]}', N'{entry[1]}', '{entry[2]}', '{entry[3]}', '{entry[4]}', '{entry[5]}', " \
+                                   f"'{entry[6]}', '{entry[7]}'), \n"
+                        count += 1
+                        if count >= batch_size:
+                            if '\n' in command:
+                                command = command[:-3]
+                                self.con.execute(command)
+                                self.con.commit()
+                                command = command_ori
                     if '\n' in command:
                         command = command[:-3]
                         self.con.execute(command)

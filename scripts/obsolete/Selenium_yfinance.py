@@ -58,7 +58,7 @@ def initiate_driver(is_login=False):
             driver.find_element_by_id('login-signin').click()
 
     default_url = 'https://finance.yahoo.com/'
-    driver_path= 'static/analysis/chromedriver92.exe'
+    driver_path= '../../static/analysis/chromedriver92.exe'
     service = Service(driver_path)
     service.start()
     driver = webdriver.Remote(service.service_url)

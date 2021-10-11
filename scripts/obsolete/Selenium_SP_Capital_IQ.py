@@ -108,7 +108,7 @@ def initiate_driver():
             except Exception as _:
                 print('No read-only message')
 
-    driver_path = 'static/analysis/chromedriver92.exe'
+    driver_path = '../../static/analysis/chromedriver92.exe'
 
     options = webdriver.ChromeOptions()
     options.add_argument("--remote-debugging-port=54123")

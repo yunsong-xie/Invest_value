@@ -22,7 +22,6 @@ path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
 path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
 pd_exclude_keywords = pd.read_csv(f'{DIR}/static/csv/wharton/exclude_keywords.csv')
 
-path_fr = max(glob.glob(f'{dir_fr}/wharton_FR_*.pkl'))
 path_fr_db = f'{dir_fr}/fr_wharton.db'
 
 
@@ -244,7 +243,7 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
     return pd_type
 
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
     pd_wharton_fr, pd_columns = read_pickle_data()
     pd_type = check_db_file(path_fr_db, pd_wharton_fr, pd_columns)
     print('Completed checking db file')

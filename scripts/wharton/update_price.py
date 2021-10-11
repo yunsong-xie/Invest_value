@@ -24,11 +24,15 @@ path_fr_db = f'{dir_fr}/fr_wharton.db'
 try:
     _ = pd.read_sql("select * from col_name limit 10", con)
 except:
-    con = sqlite3.connect(path_fr_db)
+    con = common_func.misc.get_sql_con()
+
+con_local = sqlite3.connect(path_fr_db)
 
 
-if __name__ == '__main__':
-    pd_symbols = pd.read_sql("select distinct tic from report", con)
+
+if __name__ == '__main__0':
+    pd_symbols = pd.read_sql("select distinct tic from report", con_local)
     symbols = sorted(pd_symbols['tic'])
     self = stock_price
     self.update_price_symbol(symbols, force_reload=False, check_abnormal=False)
+
