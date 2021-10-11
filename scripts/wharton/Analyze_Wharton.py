@@ -6,7 +6,7 @@ import re, os, sys, datetime, pickle, sqlite3
 import numpy as np
 import pandas as pd
 import time
-import glob, xlrd
+import glob
 from matplotlib import pyplot as plt
 import lib as common_func
 import multiprocessing as mp
@@ -19,12 +19,11 @@ pd.set_option('display.max_column', 60)
 pd.set_option('display.max_colwidth', 1200)
 pd.set_option('display.width', 12000)
 
-DIR = os.path.dirname(os.path.abspath(__file__))
 
+DIR = common_func.misc.get_main_dir()
 stock_price = common_func.StockPrice()
 
 dir_fr = f'{DIR}\\static\\Financial_reports\\Wharton\\'
-path_fr = max(glob.glob(f'{dir_fr}/wharton_FR_*.pkl'))
 path_fr_db = f'{dir_fr}/fr_wharton.db'
 
 
@@ -42,130 +41,10 @@ def get_pd_view(pd_data, dict_columns, num=5):
     return pd_view
 
 
-def read_pickle_data():
-    pd_wharton_fr = pd.read_pickle(path_fr)
-
-    path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
-    pd_columns = pd.read_csv(path_columns)
-    pd_columns = pd_columns.sort_values(by='Variable Name').rename(columns={'Variable Name': 'col_name'})
-    pd_columns['col_name'] = pd_columns['col_name'].str.lower()
-
-    desc_list = list(pd_columns['Description'])
-    desc_list = [' ('.join(i.split(' -- ')[-1].split(' (')[:-1]) for i in desc_list]
-    pd_columns['desc'] = desc_list
-
-    return pd_wharton_fr, pd_columns
-
-
-def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
-    """
-    Establish db file both data table and index table
-    Args:
-        path_fr_db (str): path to the db file
-        pd_type (pandas.dataframe): type and desc info of each column
-    """
-    pd_type = pd_wharton_fr.dtypes.reset_index().rename(columns={'index': 'col_name', 0: 'dtype'})
-    pd_type['dtype'] = pd_type['dtype'].astype(str)
-    pd_type.loc[pd_type.dtype == 'object', 'dtype'] = 'string'
-    pd_type = pd_type.merge(pd_columns[['col_name', 'desc']], on='col_name', how='inner')
-
-    if not os.path.isfile(path_fr_db):
-        con = sqlite3.connect(path_fr_db)
-        command = """CREATE TABLE "report" ("""
-        for i in range(len(pd_type)):
-            col, dtype = pd_type.iloc[i][['col_name', 'dtype']]
-            dtype = 'TEXT' if dtype == 'string' else 'NUMERIC'
-            command += f''' "{col}"	{dtype}, \n'''
-        command = command + 'PRIMARY KEY("tic", "rdq", "datafqtr") )'
-        con.execute(command)
-
-        command = """CREATE TABLE "col_name" ("seq" INTEGER, "col_name" TEXT, "desc" TEXT)"""
-        con.execute(command)
-        con.commit()
-
-        command = """INSERT INTO col_name (seq, col_name, desc) values """
-        for i in range(len(pd_type)):
-            col_name, desc = pd_type.iloc[i][['col_name', 'desc']]
-            command += f"""({i + 1}, "{col_name}", "{desc}"), \n"""
-        command = command[:-3]
-        con.execute(command)
-        con.commit()
-
-        command = """create index 'report_index' on 'report' ('tic', 'datafqtr')"""
-        con.execute(command)
-        con.commit()
-
-        con.close()
-    return pd_type
-
-
-def upload_report_data(path_fr_db, pd_wharton_fr, pd_columns):
-    """
-    Upload wharton financial report to db file, programe will automatically upload the data does not
-    exist in the db file.
-    Args:
-        path_fr_db (str): path of the db file
-        pd_wharton_fr (pandas.dataframe): uploading data
-    """
-    con = sqlite3.connect(path_fr_db)
-
-    # type info for each column in the report data frame
-    pd_type = check_db_file(path_fr_db, pd_wharton_fr, pd_columns)
-
-    merge_cols = ['tic', 'rdq', 'datafqtr']
-    command_query = f"""select {', '.join(merge_cols)} from report"""
-    pd_exist = pd.read_sql(command_query, con)
-    temp_col = 'temp'
-    pd_exist[temp_col] = 'e'
-    pd_fr_upload = pd_wharton_fr.merge(pd_exist, on=merge_cols, how='left').copy()
-    pd_fr_upload = pd_fr_upload.loc[pd_fr_upload[temp_col].isna()][[i for i in pd_fr_upload.columns if i != temp_col]]
-
-    columns = list(pd_fr_upload.columns)
-    dict_type = pd_type.set_index('col_name')['dtype'].to_dict()
-    time_start = time.time()
-    for i_col, col in enumerate(columns):
-        if dict_type[col] == 'string':
-            pd_fr_upload[col] = '"' + pd_fr_upload[col] + '"'
-        else:
-            pd_fr_upload[col] = pd_fr_upload[col].astype(str)
-            pd_fr_upload.loc[pd_fr_upload[col] == 'nan', col] = 'NULL'
-        time_span = int(round(time.time() - time_start))
-        print(f'\rTime: {time_span} s - Processing original data frame - Progress {i_col + 1}/{len(columns)}', end='')
-    print()
-    batch_size = 1000
-    n_batch = int(np.ceil(len(pd_fr_upload)/batch_size))
-    time_start = time.time()
-    for i in range(n_batch):
-        pd_batch = pd_fr_upload.iloc[i * batch_size: (i + 1) * batch_size]
-        command = f"""INSERT INTO report ({', '.join(columns)}) values \n"""
-        data_batch = pd_batch.values
-        for j in range(len(data_batch)):
-            command += f"({', '.join(data_batch[j])}), \n"
-
-        command = command[:-3]
-        con.execute(command)
-        con.commit()
-        time_span = int(round(time.time() - time_start))
-        print(f'\rTime: {time_span} s - Uploading data to db file - Progress {i + 1}/{n_batch}', end='')
-    print()
-    con.close()
-
-
 try:
     _ = pd.read_sql("select * from col_name limit 10", con)
 except:
     con = sqlite3.connect(path_fr_db)
-
-
-if __name__ == '__main__0':
-    pd_symbols = pd.read_sql("select distinct tic from report", con)
-    symbols = sorted(pd_symbols['tic'])
-    stock_price.update_price_symbol(symbols, force_reload=False, check_abnormal=False)
-
-if __name__ == '__main__0':
-    pd_wharton_fr, pd_columns = read_pickle_data()
-    pd_type = check_db_file(path_fr_db, pd_wharton_fr, pd_columns)
-    upload_report_data(path_fr_db, pd_wharton_fr, pd_columns)
 
 
 if __name__ == '__main__0':
@@ -222,7 +101,7 @@ if __name__ == '__main__0':
 
 
     symbols = ['AAPL', 'XOM', 'WMT', 'VTRS', 'ADAP', 'BABA', 'AMD', 'TSLA', 'CSBR', 'CDNA', 'EXPI', 'MIME',
-               '']
+               ]
     symbols = []
 
     query_tic_filter = ' where '
@@ -345,6 +224,10 @@ if 1 == 0:
     pd_data['quarter'] = pd_data['rdq'].str[:4].astype(int) + ((pd_data['rdq'].str[5:7].astype(int) - 1) // 3) / 4
 
     pd_data = pd_data[cols]
+
+    pd_price = stock_price.get_price_pd_query(pd_data[['tic', 'rdq']])
+    pd_price_latest = stock_price.get_price_latest(list(pd_data['tic']))
+
     pd_select = pd_data.loc[(pd_data.quarter >= 2000) & (pd_data.quarter <= 2003)]
     #pd_data['rdq'] = pd.to_datetime(pd_data['rdq'])
 
@@ -353,7 +236,7 @@ if 1 == 0:
     ax = fig.axes
     ax[0].plot(pd_size.quarter, pd_size.num, '.-')
 
-if 1 == 1:
+if 1 == 0:
     #stock_price = StockPrice()
     pd_data = pd_data_ori.copy()
     pd_price = stock_price.get_price_pd_query(pd_data_ori)

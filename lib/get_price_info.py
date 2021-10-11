@@ -876,12 +876,30 @@ class StockPrice(StockEarning):
 
         return pd_query
 
+    def get_price_latest(self, symbol):
+        if type(symbol) is str:
+            symbols = [symbol]
+        else:
+            symbols = symbol
+
+        query = f"""with filter as (select tic, max(time) as time from price group by tic)
+                    select price.* 
+                    from price inner join filter on
+                    price.tic = filter.tic
+                    and price.time = filter.time
+                    """
+        pd_price = pd.read_sql(query, self.con)
+        pd_price = pd_price.loc[pd_price.tic.isin(symbols)]
+        return pd_price
+
     def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False):
         """
         Update the local pkl stored historical intraday price information of provided list of symbols
         Args:
             symbols (str/list): Stock symbol of interested
-            time_hard_start: Hard intraday time starting date
+            time_hard_start (str): Hard intraday time starting date
+            force_reload (bool): Boolean of whether to reload the entire tic
+            check_abnormal (bool): Boolean of whether to check abnormalty
 
         """
         if type(symbols) is str:
@@ -897,18 +915,41 @@ class StockPrice(StockEarning):
             last_trading_day = str(pd.to_datetime(time_now_utc[:10]) - us_business_day)[:10]
 
         time_start = time.time()
-        command_query = f"""select tic, max(time) as last_time from price
-        where tic in ("{'", "'.join(symbols)}")
-        group by tic"""
+        command_query = f"""select tic, max(time) as last_time from price group by tic"""
         pd_last = pd.read_sql(command_query, self.con)
+        pd_last = pd_last.loc[pd_last.tic.isin(symbols)]
         pd_last = pd_last.set_index('tic')
         dict_last = pd_last['last_time'].to_dict()
+        batch_size = 10000
+        pd_price_upload_list = []
+        batch_cur_size = 0
+
+        def upload_price(_pd_price_upload_list):
+            """
+            Upload the price info to db
+            Args:
+                _pd_price_upload_list (list): list of pandas.dataframe, each item is the price data to be uploaded
+            """
+            if len(_pd_price_upload_list) > 0:
+                pd_price_upload = pd.concat(_pd_price_upload_list).drop_duplicates()
+                if len(pd_price_upload) > 0:
+                    data = pd_price_upload.values
+                    command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
+                    for entry in data:
+                        command += f'("{entry[0]}", "{entry[1]}", {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}, {entry[7]}), \n'
+                    if '\n' in command:
+                        command = command[:-3]
+                        self.con.execute(command)
+                        self.con.commit()
 
         for i_symbol, symbol in zip(range(len(symbols)), symbols):
             pd_listing_entry = self.pd_listing.loc[self.pd_listing.symbol == symbol]
 
             is_updated = False
-            ipo_date = max(pd_listing_entry.iloc[0].ipoDate, time_hard_start)
+            if len(pd_listing_entry) == 0:
+                ipo_date = time_hard_start
+            else:
+                ipo_date = max(pd_listing_entry.iloc[0].ipoDate, time_hard_start)
 
             if (symbol not in dict_last) | force_reload:
                 last_date = unix2date(date2unix(ipo_date) - 3600 * 24)[:10]
@@ -932,20 +973,21 @@ class StockPrice(StockEarning):
 
                 if len(pd_price) > 0:
                     pd_price['time'] = pd_price['time'].str[:10]
-                    pd_price = pd_price.loc[pd_price.time >= query_date_start]
+                    pd_price_upload = pd_price.loc[pd_price.time >= query_date_start]
+                    if len(pd_price_upload) > 0:
+                        keys = ['symbol', 'time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']
+                        pd_price_upload = pd_price_upload[keys].drop_duplicates()
+                        pd_price_upload_list.append(pd_price_upload)
+                        batch_cur_size += len(pd_price)
 
-                    pd_price = pd_price[['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']].drop_duplicates()
-                    data = pd_price.values
-                    command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
-                    for entry in data:
-                        command += f'("{symbol}", "{entry[0]}", {entry[1]}, {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}), \n'
-                    if '\n' in command:
-                        command = command[:-3]
-                        self.con.execute(command)
-                        self.con.commit()
+            if batch_cur_size >= batch_size:
+                upload_price(pd_price_upload_list)
+                pd_price_upload_list, batch_cur_size = [], 0
 
             time_span = round(time.time() - time_start, 1)
             print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)}', end='')
+
+        upload_price(pd_price_upload_list)
 
     def __get_price_dates(self, symbol, dates, n_shift=0):
         """
