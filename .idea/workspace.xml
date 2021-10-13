@@ -4,16 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes.">
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/Alpha_Vantage/AV_query.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/Alpha_Vantage/AV_query.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/asset_growth_cal.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/asset_growth_cal.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/misc.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/misc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/obsolete/Parse_financial_excel_20210624.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/obsolete/Parse_financial_excel_20210624.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/upload_report.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -56,7 +50,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/lib/Alpha_Vantage/assets/csv" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/static/csv/stock_list" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="PyConsoleOptionsProvider">
@@ -70,6 +64,7 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\static\csv\stock_list" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\lib\Alpha_Vantage\assets\csv" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\capitalIQ" />
       <recent name="D:\PycharmProjects\Invest_value\capitalIQ" />
@@ -398,7 +393,14 @@
       <option name="project" value="LOCAL" />
       <updated>1633992269367</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes.">
+      <created>1634100492673</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1634100492673</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -434,6 +436,7 @@
     <MESSAGE value="Add wharton scripts." />
     <MESSAGE value="Make price data stored in db file." />
     <MESSAGE value="New upload" />
-    <option name="LAST_COMMIT_MESSAGE" value="New upload" />
+    <MESSAGE value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
+    <option name="LAST_COMMIT_MESSAGE" value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
   </component>
 </project>

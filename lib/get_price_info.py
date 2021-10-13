@@ -848,7 +848,6 @@ class StockPrice(StockEarning):
         Returns:
             (pandas.dataframe): listing information for  alpha_vantage list_status file
         """
-        dir_pkl = f'{self.dir_static}/pkl_listing'
         date_month_str = str(datetime.datetime.now())[:7]
         path_listing =f'{self.dir_static}/csv/stock_list/listing_{date_month_str}.csv'
         path_fundamental = f'{self.dir_static}/csv/stock_list/fundamentals_{date_month_str}.csv'
