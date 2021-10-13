@@ -47,7 +47,6 @@ def get_margin_interest(fund, margin):
     margin_interest += (margin_fund - 999999) * 0.04
     return margin_interest
 
-
 margin = 0.75
 earning_rate = 0.265
 n_year_contribution_cutoff = 6

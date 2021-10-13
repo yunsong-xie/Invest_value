@@ -19,7 +19,7 @@ stock_price = common_func.StockPrice()
 
 dir_fr = f'{DIR}\\static\\Financial_reports\\Wharton\\'
 path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
-path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
+
 pd_exclude_keywords = pd.read_csv(f'{DIR}/static/csv/wharton/exclude_keywords.csv')
 
 path_fr_db = f'{dir_fr}/fr_wharton.db'
@@ -56,10 +56,14 @@ def get_column_info():
     return pd_columns, dict_columns, dict_types, set_types_date
 
 
-def simplify_report():
+def read_report_data(path_csv):
     """
     Read wharton report in csv format, and then output the simplifed columns.
     Simplifed column use exclude_keywords.csv file.
+
+    Args:
+        path_csv (str): path of the wharton report csv file.
+
     Returns:
         (pandas.dataframe): Simplifed wharton financial report
     """
@@ -127,11 +131,17 @@ def finalize_report(pd_wharton_fr, write_out=False):
     return pd_wharton_fr
 
 
-def read_pickle_data():
-    pd_wharton_fr = simplify_report()
-    pd_wharton_fr = finalize_report(pd_wharton_fr, write_out=False)
+def read_column_data(path_columns):
+    """
+    Read column info table for the wharton financial report
 
-    path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
+    Args:
+        path_columns (str): path to the column info.
+
+    Returns:
+        (pandas.dataframe): column info from wharton financial report
+    """
+
     pd_columns = pd.read_csv(path_columns)
     pd_columns = pd_columns.sort_values(by='Variable Name').rename(columns={'Variable Name': 'col_name'})
     pd_columns['col_name'] = pd_columns['col_name'].str.lower()
@@ -140,7 +150,7 @@ def read_pickle_data():
     desc_list = [' ('.join(i.split(' -- ')[-1].split(' (')[:-1]) for i in desc_list]
     pd_columns['desc'] = desc_list
 
-    return pd_wharton_fr, pd_columns
+    return pd_columns
 
 
 def upload_report_data(path_fr_db, pd_wharton_fr, pd_columns):
@@ -243,9 +253,20 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
     return pd_type
 
 
-if __name__ == '__main__0':
-    pd_wharton_fr, pd_columns = read_pickle_data()
+if __name__ == '__main__':
+    # Read wharton financial report data
+    path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
+    pd_wharton_fr = read_report_data(path_csv)
+    pd_wharton_fr = finalize_report(pd_wharton_fr, write_out=False)
+
+    # Read wharton financial report data column info table
+    path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
+    pd_columns = read_column_data(path_columns)
+
+    # Check condition of the db
     pd_type = check_db_file(path_fr_db, pd_wharton_fr, pd_columns)
+
+    # Start uploading
     print('Completed checking db file')
     upload_report_data(path_fr_db, pd_wharton_fr, pd_columns)
     print('Completed uploading data to db file')

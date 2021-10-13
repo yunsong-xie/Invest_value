@@ -6,3 +6,4 @@
 **/.ipynb_checkpoints/*
 **/*.db
 .idea/**
+!static/csv/stock_list/*.csv

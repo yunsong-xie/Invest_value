@@ -6,13 +6,12 @@ import pandas as pd
 import numpy as np
 import robin_stocks.robinhood as rs
 
-pd_login = pd.read_csv('D:/login_info.csv')
-pd_login = pd_login.set_index(['website', 'item'])
+pd_login = pd.read_csv(f'{os.path.expanduser("~")}/login_info.csv').set_index(['website', 'item'])
 dict_login = pd_login.to_dict()['value']
 try:
     rs.get_fundamentals('AAPL')
 except:
-    rs.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
+    rs.authentication.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
              expiresIn=86400, by_sms=True)
 
 AV_API_KEY = dict_login['alphavantage', 'API_KEY']
@@ -304,3 +303,4 @@ class financial_data:
                       f'query count: {count_query}', end='')
                 time.sleep(12)
 
+self = financial_data()

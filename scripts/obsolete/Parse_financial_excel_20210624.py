@@ -7,8 +7,6 @@ import glob, xlrd
 from matplotlib import pyplot as plt
 import lib as common_func
 import multiprocessing as mp
-from sklearn.linear_model import LinearRegression
-import statsmodels.api as sm
 
 pd.set_option('display.max_column', 60)
 pd.set_option('display.max_colwidth', 1000)

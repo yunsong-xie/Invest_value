@@ -11,6 +11,8 @@ from pandas.tseries.offsets import CustomBusinessDay
 from termcolor import colored
 from zipfile import ZipFile
 import io
+import pyEX
+import robin_stocks.robinhood as rs
 
 from matplotlib import pyplot as plt
 
@@ -21,6 +23,7 @@ pd.set_option('display.max_column', 15)
 pd.set_option('display.max_colwidth', 100)
 pd.set_option('display.width', 1000)
 DIR = os.path.dirname(os.path.abspath(__file__))
+DIR_MAIN = os.path.dirname(DIR)
 
 
 def make_soup(url):
@@ -752,12 +755,91 @@ class StockPrice(StockEarning):
         super().__init__()
         self.dir_static = f'{os.path.dirname(DIR)}/static'
         self.dir_price = f'{self.dir_static}/pkl_price'
-        self.pd_listing = None
+        self.pd_listing, self.pd_fm = None, None
         self.get_listing_info()
 
         self.dict_pd_price = {}
         self.pd_cik = None
         self.con = misc.get_sql_con()
+
+    @staticmethod
+    def _get_fundamentals(pd_listing, source='robinhood'):
+        """
+        Obtain stock fundamental data columns include:
+        symbol, market_cap, headquarters_city, headquarters_state, sector, industry, country
+
+        Args:
+            pd_listing (pandas.dataframe): Data frame read from Alpha_Vantage listing table
+                It should contains at least two columns symbol, exchange to be studied
+            source (str): source of the data pull
+
+        Returns:
+            (Pandas Dataframe): stock fundamental data
+        """
+        print(f'Start pulling marketcap info from {source}')
+        time_start = time.time()
+        symbols, marketcaps = list(pd_listing['symbol'].unique()), []
+
+        if source.lower() == 'iex':
+            # Problematic, IEX has a daily pull limit. Even though each symbol takes 1 credit,
+            # this is still very slow comparing to robinhood
+            iex_token = misc.get_login_info()['iex_cloud', 'token']
+            iex = pyEX.Client(api_token=iex_token, version='stable')
+            for i, symbol in enumerate(symbols):
+                marketcap = iex.quote(symbol=symbol)['marketCap']
+                marketcaps.append(marketcap)
+                time_span = round(time.time() - time_start, 1)
+
+                print(f'\rPulling marketcap info - Time: {time_span} s - progress {i + 1}/{len(symbols)}', end='')
+            pd_fm = None
+
+        elif source.lower() == 'robinhood':
+            # Robinhood even gives more info about the stock
+            dict_login = misc.get_login_info()
+            rs.authentication.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
+                                    expiresIn=86400, by_sms=True)
+
+            def get_fundamental_pack(_symbols):
+                """
+                Get 100 stock at a time
+                """
+                if type(_symbols) is str:
+                    _symbols = [_symbols]
+                elif len(_symbols) > 100:
+                    raise ValueError("Length of symbol list can not exceed 100")
+                fundamentals = rs.get_fundamentals(_symbols)
+                _pd_fm = pd.DataFrame(fundamentals)
+                _pd_fm = _pd_fm[['symbol', 'market_cap', 'headquarters_city', 'headquarters_state', 'sector', 'industry']]
+                _pd_fm = _pd_fm.loc[~_pd_fm.market_cap.isnull()]
+                _symbols_new = list(_pd_fm.symbol)
+                pd_stock_country = pd.DataFrame(rs.get_instruments_by_symbols(_symbols_new))[['symbol', 'country']]
+                _pd_fm = pd_stock_country.merge(_pd_fm, on='symbol', how='inner')
+                return _pd_fm
+
+            n_entry, pd_fm_list = 100, []
+            time_start = time.time()
+            n_total = int(np.ceil(len(symbols) / n_entry))
+            for i in range(n_total):
+                # Robinhood can only process 100 stocks once, need to split the data query into multiple sections
+                pd_fm_entry = get_fundamental_pack(symbols[(i * n_entry):((i + 1) * n_entry)])
+                pd_fm_list.append(pd_fm_entry)
+                time_span = round(time.time() - time_start)
+                print(f'\rSequence {i + 1}/{n_total} - {time_span} s', end='')
+
+            pd_fm = pd.concat(pd_fm_list)
+            pd_fm['market_cap'] = pd_fm['market_cap'].astype(float) / 10 ** 9
+            pd_fm = pd_fm.sort_values(by='market_cap', ascending=False)
+            pd_fm.index = np.arange(len(pd_fm))
+            pd_fm = pd_listing[['symbol', 'exchange']].merge(pd_fm, on='symbol', how='inner')
+
+            exclude_list = ['GOOG', ]
+            pd_fm = pd_fm.loc[~pd_fm.symbol.isin(exclude_list)]
+
+            print('Marketcap pulling completed')
+        else:
+            raise ValueError('Source can only be IEX or robinhood.')
+
+        return pd_fm
 
     def get_listing_info(self):
         """
@@ -767,13 +849,65 @@ class StockPrice(StockEarning):
             (pandas.dataframe): listing information for  alpha_vantage list_status file
         """
         dir_pkl = f'{self.dir_static}/pkl_listing'
-        path_listing = f'{dir_pkl}/listing_{date(0)[:7]}.pkl'
-        if os.path.isfile(path_listing):
-            self.pd_listing = pd.read_pickle(path_listing)
+        date_month_str = str(datetime.datetime.now())[:7]
+        path_listing =f'{self.dir_static}/csv/stock_list/listing_{date_month_str}.csv'
+        path_fundamental = f'{self.dir_static}/csv/stock_list/fundamentals_{date_month_str}.csv'
+        if os.path.isfile(path_listing) & os.path.isfile(path_fundamental):
+            self.pd_listing = pd.read_csv(path_listing)
+            self.pd_fm = pd.read_csv(path_fundamental)
         else:
             self.pd_listing = pd.read_csv('https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=demo')
-            self.pd_listing.to_pickle(path_listing)
+            self.pd_listing.to_csv(path_listing, index=False)
+
+            pd_listing = self.pd_listing.loc[(self.pd_listing.exchange.isin(['NYSE', 'NASDAQ'])) &
+                                             (self.pd_listing.assetType == 'Stock')]
+            pd_listing = pd_listing.loc[~pd_listing.symbol.str.contains('-')]
+            pd_fm = self._get_fundamentals(pd_listing, source='robinhood')
+            pd_fm.to_csv(path_fundamental, index=False)
+            self.pd_fm = pd_fm
+
         return self.pd_listing
+
+    def get_fundamentals(self):
+        """
+        Get the stock fundamentals from robinhood
+
+        Returns:
+            (pandas.dataframe): stock fundamentals data from robinhood.
+        """
+        _ = self.get_listing_info()
+        return self.pd_fm
+
+    def get_symbols(self, region='us', min_cap=0.25):
+        """
+        By reading output from listing and robinhood fundamentals. Apply region and minimum market cap filters.
+        Output the symbols of interest
+        Args:
+            region (str, list, tuple, None): region filter. if length is 0 or is None, no filter applied. Default: 'US'
+            min_cap: minimum market cap. Default: 0.25
+
+        Returns:
+            (list): symbols to be considered.
+        """
+        pd_fm = self.get_fundamentals()
+        if type(region) is str:
+            if region == '':
+                pass
+            else:
+                pd_fm = pd_fm.loc[pd_fm.country == region.upper()]
+        elif type(region) in [list, tuple]:
+            if len(region) == 0:
+                pass
+            else:
+                pd_fm = pd_fm.loc[pd_fm.country.isin([i.upper() for i in region])]
+        elif region is None:
+            pass
+        else:
+            raise TypeError('Not able recognize the type of region')
+
+        pd_fm = pd_fm.loc[pd_fm.market_cap >= min_cap]
+        symbols = list(pd_fm.loc[pd_fm.symbol])
+        return symbols
 
     def get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local'):
         """
@@ -947,6 +1081,7 @@ class StockPrice(StockEarning):
                                 self.con.execute(command)
                                 self.con.commit()
                                 command = command_ori
+                                count = 0
                     if '\n' in command:
                         command = command[:-3]
                         self.con.execute(command)
