@@ -5,13 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes.">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/update_price.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/upload_report.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -108,6 +103,9 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -126,6 +124,9 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/lib" />
       <option name="IS_MODULE_SDK" value="true" />
