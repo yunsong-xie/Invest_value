@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes.">
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/upload_report.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -77,7 +79,7 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value\lib" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.get_price_info">
+  <component name="RunManager" selected="Python.Analyze_Wharton">
     <configuration name="AV_query" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -103,9 +105,6 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -185,8 +184,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.Analyze_Wharton" />
+        <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.AV_query" />
         <item itemvalue="Python.misc" />
         <item itemvalue="Python.update_price" />
@@ -415,7 +414,14 @@
       <option name="project" value="LOCAL" />
       <updated>1634100564469</updated>
     </task>
-    <option name="localTasksCounter" value="31" />
+    <task id="LOCAL-00031" summary="Get ride of the unused functions in get_price_info.py">
+      <created>1634186816686</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1634186816686</updated>
+    </task>
+    <option name="localTasksCounter" value="32" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -452,6 +458,7 @@
     <MESSAGE value="Make price data stored in db file." />
     <MESSAGE value="New upload" />
     <MESSAGE value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
+    <MESSAGE value="Get ride of the unused functions in get_price_info.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Get ride of the unused functions in get_price_info.py" />
   </component>
 </project>

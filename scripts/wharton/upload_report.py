@@ -270,3 +270,5 @@ if __name__ == '__main__':
     print('Completed checking db file')
     upload_report_data(path_fr_db, pd_wharton_fr, pd_columns)
     print('Completed uploading data to db file')
+
+    stock_price.upload_transaction('report', path_csv.replace('\\', '/'))

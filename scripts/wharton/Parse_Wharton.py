@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import time
 
+
 pd.set_option('display.max_column', 60)
 pd.set_option('display.max_colwidth', 1000)
 pd.set_option('display.width', 10000)

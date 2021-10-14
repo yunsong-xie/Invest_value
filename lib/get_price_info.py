@@ -954,6 +954,8 @@ class StockPrice(StockEarning):
                 # Every month update the symbol list to db. This is for wharton pull
                 self._upload_list_fundamentals(pd_listing_ori, pd_fm_ori)
                 self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.country == 'US') & (pd_fm_ori.market_cap >= 0.25)][['symbol']].copy()
+                self.upload_transaction('listing')
+                self.upload_transaction('fundamental')
 
         return self.pd_listing
 
@@ -1146,6 +1148,7 @@ class StockPrice(StockEarning):
         batch_size = 1000
         pd_price_upload_list = []
         batch_cur_size = 0
+        label_global_update = False
 
         def upload_price(_pd_price_upload_list):
             """
@@ -1209,6 +1212,7 @@ class StockPrice(StockEarning):
                     pd_price['time'] = pd_price['time'].str[:10]
                     pd_price_upload = pd_price.loc[pd_price.time >= query_date_start]
                     if len(pd_price_upload) > 0:
+                        label_global_update = True
                         keys = ['symbol', 'time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']
                         pd_price_upload = pd_price_upload[keys].drop_duplicates()
                         pd_price_upload_list.append(pd_price_upload)
@@ -1222,5 +1226,7 @@ class StockPrice(StockEarning):
             print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)}', end='')
 
         upload_price(pd_price_upload_list)
+        if label_global_update:
+            self.upload_transaction('price')
 
 self = StockPrice()
