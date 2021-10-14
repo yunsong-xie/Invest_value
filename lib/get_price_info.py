@@ -756,11 +756,9 @@ class StockPrice(StockEarning):
         self.dir_static = f'{os.path.dirname(DIR)}/static'
         self.dir_price = f'{self.dir_static}/pkl_price'
         self.pd_listing, self.pd_fm = None, None
-        self.get_listing_info()
-
+        self.con = misc.get_sql_con()
         self.dict_pd_price = {}
         self.pd_cik = None
-        self.con = misc.get_sql_con()
 
     @staticmethod
     def _get_fundamentals(pd_listing, source='robinhood'):
@@ -841,6 +839,92 @@ class StockPrice(StockEarning):
 
         return pd_fm
 
+    def _upload_list_fundamentals(self, pd_listing, pd_fm):
+        """
+        Upload latest listing and fundamentals information to db
+        """
+        _ = self.get_listing_info()
+        try:
+            _ = pd.read_sql("select * from listing limit 3", self.con)
+        except:
+            self.con.execute("""create table "listing" (
+                            "symbol" TEXT, 
+                            "name" TEXT, 
+                            "exchange" TEXT, 
+                            "assetType" TEXT, 
+                            "ipoDate" TEXT
+                        ) """)
+            self.con.execute("""create table "fundamental" (
+                            "symbol" TEXT, 
+                            "exchange" TEXT, 
+                            "country" TEXT, 
+                            "market_cap" NUMERIC, 
+                            "headquarters_city" TEXT, 
+                            "headquarters_state" TEXT, 
+                            "sector" TEXT, 
+                            "industry" TEXT
+                        ) """)
+            self.con.commit()
+        self.con.execute("""delete from listing""")
+        self.con.execute("""delete from fundamental""")
+        self.con.commit()
+
+        batch_size = 1000
+
+        def upload_data(tablename, pd_data):
+            """
+            This function is able to upload both listing and fundamental tables
+            Args:
+                tablename (str): tablename, can either be listing or fundamental
+                pd_data (pandas.dataframe):
+            """
+            pd_data_1 = pd_data.rename(columns={'tic': 'symbol'}).copy()
+            dict_keys = dict(pd_data_1.dtypes)
+            for key in dict_keys:
+                if str(dict(pd_data_1.dtypes)[key]) == 'object':
+                    pd_data_1[key] = pd_data_1[key].fillna('NULL')
+                    pd_data_1[key] = '"' + pd_data_1[key] + '"'
+                else:
+                    pd_data_1[key] = pd_data_1[key].astype(str)
+
+            data = pd_data_1.values
+            command_ori = f"""insert into {tablename} ("{'", "'.join(dict_keys)}") values """
+            command = command_ori
+            count = 0
+            time_start = time.time()
+            for i, entry in enumerate(data):
+                command += f"""({', '.join(entry)}), \n"""
+                count += 1
+                if count >= batch_size:
+                    if '\n' in command:
+                        command = command[:-3]
+                        self.con.execute(command)
+                        self.con.commit()
+                        command = command_ori
+                        count = 0
+                        time_span = round(time.time() - time_start, 1)
+                        print(f'\rUploading {tablename} - {time_span} s - progress {i + 1}/{len(data)}', end='')
+            if '\n' in command:
+                command = command[:-3]
+                self.con.execute(command)
+                self.con.commit()
+                time_span = round(time.time() - time_start, 1)
+                print(f'\rUploading {tablename} - {time_span} s - progress {len(data)}/{len(data)}', end='')
+
+        keys_listing = ['symbol', 'name', 'exchange', 'assetType', 'ipoDate']
+        upload_data('listing', pd_listing[keys_listing])
+        keys_fundamental = ['symbol', 'exchange', 'country', 'market_cap', 'headquarters_city', 'headquarters_state',
+                            'sector', 'industry']
+        pd_fm['market_cap'] = pd_fm['market_cap'].round(4)
+        print()
+        upload_data('fundamental', pd_fm[keys_fundamental])
+
+    def upload_transaction(self, tablename, comment="NULL"):
+        date_day_str = str(datetime.datetime.now())[:10]
+        command = f"""insert into log ("time", "tablename", "comment") values ("{date_day_str}", "{tablename}", "{comment}")"""
+        self.con.execute(command)
+        self.con.commit()
+
     def get_listing_info(self):
         """
         Get the listing information. It caches the information by month. Every month it updates the info from alphavantage.
@@ -848,22 +932,28 @@ class StockPrice(StockEarning):
         Returns:
             (pandas.dataframe): listing information for  alpha_vantage list_status file
         """
-        date_month_str = str(datetime.datetime.now())[:7]
-        path_listing =f'{self.dir_static}/csv/stock_list/listing_{date_month_str}.csv'
-        path_fundamental = f'{self.dir_static}/csv/stock_list/fundamentals_{date_month_str}.csv'
-        if os.path.isfile(path_listing) & os.path.isfile(path_fundamental):
-            self.pd_listing = pd.read_csv(path_listing)
-            self.pd_fm = pd.read_csv(path_fundamental)
-        else:
-            self.pd_listing = pd.read_csv('https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=demo')
-            self.pd_listing.to_csv(path_listing, index=False)
+        if (self.pd_listing is None) | (self.pd_fm is None):
+            date_month_str = str(datetime.datetime.now())[:7]
+            pd_log = pd.read_sql("""select tablename, max(time) as time from log 
+                        where tablename in ('listing', 'fundamental')
+                        group by tablename""", self.con)
+            last_update_time = pd_log.time.min()
+            if last_update_time[:7] == date_month_str:
+                self.pd_listing = pd.read_sql('select * from listing', self.con)
+            else:
+                self.pd_listing = pd.read_csv('https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=demo')
+                # self.pd_listing.to_csv(path_listing, index=False)
+                pd_listing_ori = self.pd_listing.copy()
+                pd_listing = self.pd_listing.loc[(self.pd_listing.exchange.isin(['NYSE', 'NASDAQ'])) &
+                                                 (self.pd_listing.assetType == 'Stock')]
+                pd_listing = pd_listing.loc[~pd_listing.symbol.str.contains('-')]
+                pd_fm = self._get_fundamentals(pd_listing, source='robinhood')
+                pd_fm_ori = pd_fm.copy()
+                # pd_fm.to_csv(path_fundamental, index=False)
 
-            pd_listing = self.pd_listing.loc[(self.pd_listing.exchange.isin(['NYSE', 'NASDAQ'])) &
-                                             (self.pd_listing.assetType == 'Stock')]
-            pd_listing = pd_listing.loc[~pd_listing.symbol.str.contains('-')]
-            pd_fm = self._get_fundamentals(pd_listing, source='robinhood')
-            pd_fm.to_csv(path_fundamental, index=False)
-            self.pd_fm = pd_fm
+                # Every month update the symbol list to db. This is for wharton pull
+                self._upload_list_fundamentals(pd_listing_ori, pd_fm_ori)
+                self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.country == 'US') & (pd_fm_ori.market_cap >= 0.25)][['symbol']].copy()
 
         return self.pd_listing
 
@@ -874,7 +964,7 @@ class StockPrice(StockEarning):
         Returns:
             (pandas.dataframe): stock fundamentals data from robinhood.
         """
-        _ = self.get_listing_info()
+        self.pd_fm = pd.read_sql('select * from fundamental', self.con)
         return self.pd_fm
 
     def get_symbols(self, region='us', min_cap=0.25):
@@ -948,7 +1038,7 @@ class StockPrice(StockEarning):
         elif source == 'local':
 
             command_query = f"""select time, close, adjclose from price where
-                tic = "{symbol}"
+                symbol = "{symbol}"
                 and time >= '{date_start}'
                 and time <= '{date_end}'
                 order by time
@@ -974,17 +1064,17 @@ class StockPrice(StockEarning):
         array_symbol = list(set(symbols)) * len(dates)
         array_date = sorted(list(set(dates)) * len(symbols))
 
-        pd_query = pd.DataFrame({'tic': array_symbol, 'time': array_date})
+        pd_query = pd.DataFrame({'symbol': array_symbol, 'time': array_date})
         pd_result = self.get_price_pd_query(pd_query)
 
         return pd_result
 
     def get_price_pd_query(self, pd_input):
 
-        pd_buff = pd_input.rename(columns={'symbol': 'tic', 'rdq': 'time'})[['tic', 'time']].drop_duplicates()
+        pd_buff = pd_input.rename(columns={'symbol': 'symbol', 'rdq': 'time'})[['symbol', 'time']].drop_duplicates()
 
-        data_buff = pd_buff[['tic', 'time']].values
-        command_insert = """insert into buff (tic, time) values """
+        data_buff = pd_buff[['symbol', 'time']].values
+        command_insert = """insert into buff (symbol, time) values """
         for entry in data_buff:
             command_insert += f"""("{entry[0]}", "{entry[1]}"), \n"""
         if '\n' in command_insert:
@@ -992,16 +1082,16 @@ class StockPrice(StockEarning):
             self.con.execute(command_insert)
 
         command = """with filter as (
-            select t1.tic, t1.time as time_request, min(t2.time) as time 
+            select t1.symbol, t1.time as time_request, min(t2.time) as time 
             from buff t1, price t2
-            where t1.tic = t2.tic
+            where t1.symbol = t2.symbol
             and t2.time >= t1.time
-            group by t1.tic, t1.time
+            group by t1.symbol, t1.time
         )
         select t1.*, t2.close, t2.adjclose from 
         filter t1 inner join price t2 
         on t1.time = t2.time
-        and t1.tic = t2.tic
+        and t1.symbol = t2.symbol
         """
         pd_query = pd.read_sql(command, self.con)
 
@@ -1015,14 +1105,14 @@ class StockPrice(StockEarning):
         else:
             symbols = symbol
 
-        query = f"""with filter as (select tic, max(time) as time from price group by tic)
+        query = f"""with filter as (select symbol, max(time) as time from price group by symbol)
                     select price.* 
                     from price inner join filter on
-                    price.tic = filter.tic
+                    price.symbol = filter.symbol
                     and price.time = filter.time
                     """
         pd_price = pd.read_sql(query, self.con)
-        pd_price = pd_price.loc[pd_price.tic.isin(symbols)]
+        pd_price = pd_price.loc[pd_price.symbol.isin(symbols)]
         return pd_price
 
     def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False):
@@ -1031,7 +1121,7 @@ class StockPrice(StockEarning):
         Args:
             symbols (str/list): Stock symbol of interested
             time_hard_start (str): Hard intraday time starting date
-            force_reload (bool): Boolean of whether to reload the entire tic
+            force_reload (bool): Boolean of whether to reload the entire symbol
             check_abnormal (bool): Boolean of whether to check abnormalty
 
         """
@@ -1048,10 +1138,10 @@ class StockPrice(StockEarning):
             last_trading_day = str(pd.to_datetime(time_now_utc[:10]) - us_business_day)[:10]
 
         time_start = time.time()
-        command_query = f"""select tic, max(time) as last_time from price group by tic"""
+        command_query = f"""select symbol, max(time) as last_time from price group by symbol"""
         pd_last = pd.read_sql(command_query, self.con)
-        pd_last = pd_last.loc[pd_last.tic.isin(symbols)]
-        pd_last = pd_last.set_index('tic')
+        pd_last = pd_last.loc[pd_last.symbol.isin(symbols)]
+        pd_last = pd_last.set_index('symbol')
         dict_last = pd_last['last_time'].to_dict()
         batch_size = 1000
         pd_price_upload_list = []
@@ -1067,7 +1157,7 @@ class StockPrice(StockEarning):
                 pd_price_upload = pd.concat(_pd_price_upload_list).drop_duplicates()
                 if len(pd_price_upload) > 0:
                     data = pd_price_upload.values
-                    command_ori = 'insert into price ("tic", "time", "open", "high", "low", "volume", "close", "adjclose") values '
+                    command_ori = 'insert into price ("symbol", "time", "open", "high", "low", "volume", "close", "adjclose") values '
                     command = command_ori
                     count = 0
                     for entry in data:
@@ -1103,7 +1193,7 @@ class StockPrice(StockEarning):
                     is_updated = True
 
                 if check_abnormal:
-                    command_query = f"""select time from price where tic = "{symbol}" """
+                    command_query = f"""select time from price where symbol = "{symbol}" """
                     pd_abnormal = pd.read_sql(command_query, self.con)
                     max_diff_days = pd.to_datetime(pd_abnormal.time).diff().dt.days.max()
                     if max_diff_days > 90:
@@ -1290,8 +1380,8 @@ class StockPrice(StockEarning):
 
     def __init_upload_price(self):
 
-        pd_symbols = pd.read_sql("select distinct tic from report", self.con)
-        symbols = sorted(pd_symbols['tic'])
+        pd_symbols = pd.read_sql("select distinct symbol from report", self.con)
+        symbols = sorted(pd_symbols['symbol'])
 
         time_start = time.time()
         for i_symbol, symbol in enumerate(symbols):
@@ -1301,7 +1391,7 @@ class StockPrice(StockEarning):
 
             pd_price = pd_price[['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']].drop_duplicates()
             data = pd_price.values
-            command = 'insert into price (tic, time, open, high, low, volume, close, adjclose) values '
+            command = 'insert into price (symbol, time, open, high, low, volume, close, adjclose) values '
             for entry in data:
                 command += f'("{symbol}", "{entry[0]}", {entry[1]}, {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, {entry[6]}), \n'
             if '\n' in command:

@@ -5,6 +5,4 @@
 **/*.zip
 **/.ipynb_checkpoints/*
 **/*.db
-**/*.xml
-.idea/**/*.*
 !static/csv/stock_list/*.csv

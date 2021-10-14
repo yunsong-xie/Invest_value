@@ -2,17 +2,12 @@ __author__ = 'Yunsong Xie'
 __email__ = 'xiefinance00@gmail.com'
 __company__ = 'Xie Finance LLC'
 
-import re, os, sys, datetime, pickle, sqlite3
+import re, os, sys, datetime, sqlite3
 import numpy as np
 import pandas as pd
 import time
 import glob
 from matplotlib import pyplot as plt
-import lib as common_func
-import multiprocessing as mp
-from sklearn.linear_model import LinearRegression
-import statsmodels.api as sm
-
 import lib as common_func
 
 pd.set_option('display.max_column', 60)
@@ -104,39 +99,39 @@ if __name__ == '__main__0':
                ]
     symbols = []
 
-    query_tic_filter = ' where '
+    query_symbol_filter = ' where '
     if symbols:
-        query_tic_filter += f"""tic in ("{'", "'.join(symbols)}") \n"""
+        query_symbol_filter += f"""symbol in ("{'", "'.join(symbols)}") \n"""
 
     if col_non_null_list:
-        if '\n' in query_tic_filter:
-            query_tic_filter += ' and '
+        if '\n' in query_symbol_filter:
+            query_symbol_filter += ' and '
         for i_col, col in enumerate(col_non_null_list):
             if i_col == 0:
-                query_tic_filter += f'{col} is not NULL '
+                query_symbol_filter += f'{col} is not NULL '
             else:
-                query_tic_filter += f'and {col} is not NULL '
-        query_tic_filter += '\n'
+                query_symbol_filter += f'and {col} is not NULL '
+        query_symbol_filter += '\n'
 
     if col_positive_list:
-        if '\n' in query_tic_filter:
-            query_tic_filter += ' and '
+        if '\n' in query_symbol_filter:
+            query_symbol_filter += ' and '
         for i_col, col in enumerate(col_positive_list):
             if i_col == 0:
-                query_tic_filter += f'{col} > 0 '
+                query_symbol_filter += f'{col} > 0 '
             else:
-                query_tic_filter += f'and {col} > 0 '
-        query_tic_filter += '\n'
+                query_symbol_filter += f'and {col} > 0 '
+        query_symbol_filter += '\n'
 
     if col_greater_list:
-        if '\n' in query_tic_filter:
-            query_tic_filter += ' and '
+        if '\n' in query_symbol_filter:
+            query_symbol_filter += ' and '
         for i_col, col in enumerate(col_greater_list):
             if i_col == 0:
-                query_tic_filter += f' {col[0]} > {col[1]} '
+                query_symbol_filter += f' {col[0]} > {col[1]} '
             else:
-                query_tic_filter += f'and {col[0]} > {col[1]} '
-        query_tic_filter += '\n'
+                query_symbol_filter += f'and {col[0]} > {col[1]} '
+        query_symbol_filter += '\n'
 
     query_growth_filter, count = ' where ', 0
     for _key_time in year_desc_grow_dict:
@@ -166,7 +161,7 @@ if __name__ == '__main__0':
     col_query_avg_3 = ', '.join([f'avg(t3.{i}) as {i}_1' for i in col_output_list_avg])
     col_query_avg_4 = ', '.join([f'avg(t4.{i}) as {i}_2' for i in col_output_list_avg])
 
-    query_translate = ' rank, tic, rdq, datafqtr, cshoq as shares, '
+    query_translate = ' rank, symbol, rdq, datafqtr, cshoq as shares, '
     for key_time in [0, 1, 2]:
         for col in col_output_list_avg:
             if col in dict_col_name_reverse:
@@ -178,32 +173,32 @@ if __name__ == '__main__0':
 
 
     command_query = f"""with filter_1 as (
-        select rank() over (order by tic, rdq, datafqtr) rank, tic, rdq, datafqtr, cshoq, {col_query}
+        select rank() over (order by symbol, rdq, datafqtr) rank, symbol, rdq, datafqtr, cshoq, {col_query}
         from report 
-        {query_tic_filter}
-        order by tic, rdq, datafqtr
+        {query_symbol_filter}
+        order by symbol, rdq, datafqtr
     ), 
     table_3_year as (
-        select t1.rank, t1.tic, t1.rdq, t1.datafqtr, t1.cshoq, count(t2.rdq) as num 
+        select t1.rank, t1.symbol, t1.rdq, t1.datafqtr, t1.cshoq, count(t2.rdq) as num 
         from filter_1 t1, filter_1 t2
-        where t1.tic = t2.tic
+        where t1.symbol = t2.symbol
         and t1.rdq > t2.rdq
         and julianday(t1.rdq) - julianday(t2.rdq) <= 1155
-        group by t1.tic, t1.rdq, t1.datafqtr
+        group by t1.symbol, t1.rdq, t1.datafqtr
     ), 
     filter_3_year as (
-        select rank, tic, rdq, datafqtr, cshoq from table_3_year
+        select rank, symbol, rdq, datafqtr, cshoq from table_3_year
         where num >= 12
-        order by tic, rdq, datafqtr
+        order by symbol, rdq, datafqtr
     ),
     data2 as (
         select t1.*, {col_query_avg_2}, {col_query_avg_3}, {col_query_avg_4}
         from filter_3_year t1, filter_1 t2, filter_1 t3, filter_1 t4
-        where t1.tic = t2.tic and t1.tic = t3.tic and t1.tic = t4.tic
+        where t1.symbol = t2.symbol and t1.symbol = t3.symbol and t1.symbol = t4.symbol
         and t1.rank - t2.rank >= 0 and t1.rank - t3.rank >= 4 and t1.rank - t4.rank >=  8
         and t1.rank - t2.rank <= 3 and t1.rank - t3.rank <= 7 and t1.rank - t4.rank <= 11
-        group by t1.tic, t1.rdq, t1.datafqtr
-        order by t1.tic, t1.rdq, t1.datafqtr
+        group by t1.symbol, t1.rdq, t1.datafqtr
+        order by t1.symbol, t1.rdq, t1.datafqtr
     ),
     data_translate as (
         select {query_translate} from data2
@@ -219,14 +214,14 @@ if __name__ == '__main__0':
 
 if 1 == 0:
     pd_data = pd_data_ori.copy()
-    key_head_list = ['rank', 'tic', 'rdq', 'datafqtr', 'quarter']
+    key_head_list = ['rank', 'symbol', 'rdq', 'datafqtr', 'quarter']
     cols = key_head_list + sorted([i for i in list(pd_data.columns) if i not in key_head_list])
     pd_data['quarter'] = pd_data['rdq'].str[:4].astype(int) + ((pd_data['rdq'].str[5:7].astype(int) - 1) // 3) / 4
 
     pd_data = pd_data[cols]
 
-    pd_price = stock_price.get_price_pd_query(pd_data[['tic', 'rdq']])
-    pd_price_latest = stock_price.get_price_latest(list(pd_data['tic']))
+    pd_price = stock_price.get_price_pd_query(pd_data[['symbol', 'rdq']])
+    pd_price_latest = stock_price.get_price_latest(list(pd_data['symbol']))
 
     pd_select = pd_data.loc[(pd_data.quarter >= 2000) & (pd_data.quarter <= 2003)]
     #pd_data['rdq'] = pd.to_datetime(pd_data['rdq'])
@@ -242,10 +237,10 @@ if 1 == 0:
     pd_price = stock_price.get_price_pd_query(pd_data_ori)
 
     pd_price = pd_price.rename(columns={'time': 'time_price', 'time_request': 'rdq',  'close': 'price'})
-    pd_data = pd_data.merge(pd_price, on=['tic', 'rdq'], how='inner')
+    pd_data = pd_data.merge(pd_price, on=['symbol', 'rdq'], how='inner')
     pd_data['market_cap'] = pd_data['shares'] * pd_data['price']
 
-    key_head_list = ['rank', 'tic', 'rdq', 'datafqtr', 'time_price', 'price', 'market_cap', 'shares']
+    key_head_list = ['rank', 'symbol', 'rdq', 'datafqtr', 'time_price', 'price', 'market_cap', 'shares']
     cols = key_head_list + sorted([i for i in list(pd_data.columns) if i not in key_head_list])
     pd_data = pd_data[cols]
 

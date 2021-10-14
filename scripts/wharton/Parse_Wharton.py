@@ -29,7 +29,7 @@ dict_types = pd_columns.set_index('Variable Name')['Type'].to_dict()
 dict_types_date = {i.lower() for i in dict_types if dict_types[i] == 'date'}
 dict_types = {i.lower(): dict_types[i] if dict_types[i] != 'date' else 'str' for i in dict_types}
 
-pd_wharton = pd.read_csv(path_csv)
+pd_wharton = pd.read_csv(path_csv).rename(columns={'tic': 'symbol'})
 
 def get_pd_view(pd_data, dict_columns, num=5):
     pd_view = pd_data.iloc[:num].T
@@ -79,7 +79,7 @@ for i in dict_types_select_str:
     pd_wharton_in.loc[pd_wharton_in[i].isna(), i] = ''
 
 
-pd_view = get_pd_view(pd_wharton_in.loc[(pd_wharton_in.tic == 'AAPL') &(pd_wharton_in.datafqtr >= '2019')],
+pd_view = get_pd_view(pd_wharton_in.loc[(pd_wharton_in.symbol == 'AAPL') &(pd_wharton_in.datafqtr >= '2019')],
                       dict_columns)
 
 pd_view_code = pd_view.sort_values(by='code')
@@ -89,15 +89,15 @@ keyword_study = 'fof'
 cols_select_study = [i for i in cols_select if keyword_study in dict_columns[i].lower()]
 pd_temp = pd_wharton_in[cols_select_study].drop_duplicates()
 index_temp = pd_temp.index
-pd_temp_1 = pd_wharton_in.loc[index_temp][['tic'] + cols_select_study]
+pd_temp_1 = pd_wharton_in.loc[index_temp][['symbol'] + cols_select_study]
 pd_view_1 = get_pd_view(pd_temp_1, dict_columns)
-#pd_temp_2 = pd_temp_1.groupby('tic').size().reset_index()
+#pd_temp_2 = pd_temp_1.groupby('symbol').size().reset_index()
 
 date_now = str(datetime.datetime.now())[:10].replace('-', '')
 
 pd_wharton_fr = pd_wharton_in
 columns = sorted(pd_wharton_fr.columns)
-col_head = ['tic', 'rdq', 'datafqtr', 'pdateq', 'datacqtr', 'fdateq']
+col_head = ['symbol', 'rdq', 'datafqtr', 'pdateq', 'datacqtr', 'fdateq']
 columns_final = col_head + [i for i in columns if i not in col_head]
 pd_wharton_fr = pd_wharton_fr[columns_final]
 cols_date_num = ['rdq', 'pdateq', 'fdateq']

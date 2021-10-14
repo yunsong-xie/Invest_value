@@ -114,7 +114,7 @@ def finalize_report(pd_wharton_fr, write_out=False):
         (pandas.dataframe):
     """
     columns = sorted(pd_wharton_fr.columns)
-    col_head = ['tic', 'rdq', 'datafqtr', 'pdateq', 'datacqtr', 'fdateq']
+    col_head = ['symbol', 'rdq', 'datafqtr', 'pdateq', 'datacqtr', 'fdateq']
     columns_final = col_head + [i for i in columns if i not in col_head]
     pd_wharton_fr = pd_wharton_fr[columns_final]
     cols_date_num = ['rdq', 'pdateq', 'fdateq']
@@ -166,7 +166,7 @@ def upload_report_data(path_fr_db, pd_wharton_fr, pd_columns):
     # type info for each column in the report data frame
     pd_type = check_db_file(path_fr_db, pd_wharton_fr, pd_columns)
 
-    merge_cols = ['tic', 'rdq', 'datafqtr']
+    merge_cols = ['symbol', 'rdq', 'datafqtr']
     command_query = f"""select {', '.join(merge_cols)} from report"""
     pd_exist = pd.read_sql(command_query, con)
     temp_col = 'temp'
@@ -226,7 +226,7 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
             col, dtype = pd_type.iloc[i][['col_name', 'dtype']]
             dtype = 'TEXT' if dtype == 'string' else 'NUMERIC'
             command += f''' "{col}"	{dtype}, \n'''
-        command = command + 'PRIMARY KEY("tic", "rdq", "datafqtr") )'
+        command = command + 'PRIMARY KEY("symbol", "rdq", "datafqtr") )'
         con.execute(command)
 
         command = """CREATE TABLE "col_name" ("seq" INTEGER, "col_name" TEXT, "desc" TEXT)"""
@@ -241,7 +241,7 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
         con.execute(command)
         con.commit()
 
-        command = """create index 'report_index' on 'report' ('tic', 'datafqtr')"""
+        command = """create index 'report_index' on 'report' ('symbol', 'datafqtr')"""
         con.execute(command)
         con.commit()
 
