@@ -4,14 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes.">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Parse_Wharton.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/update_price.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/upload_report.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -414,7 +408,14 @@
       <option name="project" value="LOCAL" />
       <updated>1634100564469</updated>
     </task>
-    <option name="localTasksCounter" value="31" />
+    <task id="LOCAL-00031" summary="Make changes to listing and fundamental local storage from csv to db.">
+      <created>1634186449925</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1634186449925</updated>
+    </task>
+    <option name="localTasksCounter" value="32" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -451,6 +452,7 @@
     <MESSAGE value="Make price data stored in db file." />
     <MESSAGE value="New upload" />
     <MESSAGE value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
+    <MESSAGE value="Make changes to listing and fundamental local storage from csv to db." />
+    <option name="LAST_COMMIT_MESSAGE" value="Make changes to listing and fundamental local storage from csv to db." />
   </component>
 </project>
