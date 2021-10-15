@@ -757,6 +757,7 @@ class StockPrice(StockEarning):
         self.dir_price = f'{self.dir_static}/pkl_price'
         self.pd_listing, self.pd_fm = None, None
         self.con = misc.get_sql_con()
+        self.pd_listing = self.get_listing_info()
         self.dict_pd_price = {}
         self.pd_cik = None
 
@@ -956,6 +957,7 @@ class StockPrice(StockEarning):
                 self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.country == 'US') & (pd_fm_ori.market_cap >= 0.25)][['symbol']].copy()
                 self.upload_transaction('listing')
                 self.upload_transaction('fundamental')
+                _ = self.get_symbols(output_csv=True)
 
         return self.pd_listing
 
@@ -969,7 +971,7 @@ class StockPrice(StockEarning):
         self.pd_fm = pd.read_sql('select * from fundamental', self.con)
         return self.pd_fm
 
-    def get_symbols(self, region='us', min_cap=0.25):
+    def get_symbols(self, region='us', min_cap=0.25, output_csv=False):
         """
         By reading output from listing and robinhood fundamentals. Apply region and minimum market cap filters.
         Output the symbols of interest
@@ -997,7 +999,9 @@ class StockPrice(StockEarning):
             raise TypeError('Not able recognize the type of region')
 
         pd_fm = pd_fm.loc[pd_fm.market_cap >= min_cap]
-        symbols = list(pd_fm.loc[pd_fm.symbol])
+        if output_csv:
+            pd_fm[['symbol']].to_csv(f'{self.dir_static}/csv/tickers/tickers.csv', index=False, header=False)
+        symbols = list(pd_fm.symbol)
         return symbols
 
     def get_price_range(self, symbol, date_start='1975-01-01', date_end=None, source='local'):
@@ -1071,9 +1075,9 @@ class StockPrice(StockEarning):
 
         return pd_result
 
-    def get_price_pd_query(self, pd_input):
+    def get_price_pd_query(self, pd_input, time_col='rdq'):
 
-        pd_buff = pd_input.rename(columns={'symbol': 'symbol', 'rdq': 'time'})[['symbol', 'time']].drop_duplicates()
+        pd_buff = pd_input.rename(columns={'symbol': 'symbol', time_col: 'time'})[['symbol', 'time']].drop_duplicates()
 
         data_buff = pd_buff[['symbol', 'time']].values
         command_insert = """insert into buff (symbol, time) values """
@@ -1107,7 +1111,13 @@ class StockPrice(StockEarning):
         else:
             symbols = symbol
 
-        query = f"""with filter as (select symbol, max(time) as time from price group by symbol)
+        filter_symbol = "('" + "', '".join(symbols) + "')"
+        query = f"""with filter as (
+                        select symbol, max(time) as time 
+                        from price
+                        where  {filter_symbol}
+                        group by symbol
+                    )
                     select price.* 
                     from price inner join filter on
                     price.symbol = filter.symbol
@@ -1116,6 +1126,51 @@ class StockPrice(StockEarning):
         pd_price = pd.read_sql(query, self.con)
         pd_price = pd_price.loc[pd_price.symbol.isin(symbols)]
         return pd_price
+
+    def get_marketcap_latest(self):
+        """
+        Pull the latest market cap for all stocks.
+
+        Returns:
+            (pandas.dataframe): return data with the followed columns:
+                                symbol, rdq, adjclose_latest, marketcap_latest
+        """
+        query = """with filter as (select symbol, max(rdq) as rdq from report group by symbol)
+                            select t1.symbol, t1.rdq, t1.cshoq from 
+                            report t1 inner join filter
+                            on t1.symbol = filter.symbol
+                            and t1.rdq = filter.rdq
+                """
+        pd_shares = pd.read_sql(query, self.con).rename(columns={'cshoq': 'shares'})
+        pd_price_end = self.get_price_pd_query(pd_shares).rename(columns={'time_request': 'rdq'})
+        merge_keys = ['symbol', 'rdq']
+        pd_marketcap = pd_shares[merge_keys + ['shares']].merge(pd_price_end[merge_keys + ['adjclose']], on=merge_keys, how='inner')
+        pd_marketcap['marketcap'] = pd_marketcap['shares'] * pd_marketcap['adjclose']
+        dict_rename = {'adjclose': 'adjclose_latest', 'marketcap': 'marketcap_latest'}
+        pd_marketcap_latest = pd_marketcap.sort_values(by='marketcap', ascending=False).dropna().rename(columns=dict_rename)
+        pd_marketcap_latest = pd_marketcap_latest[['symbol', 'rdq', 'adjclose_latest', 'marketcap_latest']]
+        return pd_marketcap_latest
+
+    def get_marketcap_time(self, pd_data, time_col='rdq'):
+        """
+        Get the marketcap with the indicated time columns (time_col)
+        Args:
+            pd_data (pandas.dataframe): Dataframe for input, should include symbol and [time_col]
+            time_col (str): The time column, default: rdq.
+
+        Returns:
+            (pandas.dataframe): the marketcap dataframe. columns include
+                                symbol, [time_col], marketcap
+        """
+        pd_marketcap_latest = self.get_marketcap_latest()[['symbol', 'adjclose_latest', 'marketcap_latest']]
+        pd_marketcap_report = self.get_price_pd_query(pd_data, time_col=time_col).rename(columns={'time_request': time_col})
+        pd_marketcap_report = pd_marketcap_report[['symbol', time_col, 'adjclose']]
+
+        pd_marketcap_report = pd_marketcap_report.merge(pd_marketcap_latest, on='symbol', how='inner')
+        pd_marketcap_report['marketcap'] = (pd_marketcap_report['adjclose'] / pd_marketcap_report['adjclose_latest'] *
+                                            pd_marketcap_report['marketcap_latest'])
+        pd_marketcap_report = pd_marketcap_report[['symbol', time_col, 'marketcap']]
+        return pd_marketcap_report
 
     def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False):
         """
@@ -1142,7 +1197,7 @@ class StockPrice(StockEarning):
         time_start = time.time()
         command_query = f"""select symbol, max(time) as last_time from price group by symbol"""
         pd_last = pd.read_sql(command_query, self.con)
-        pd_last = pd_last.loc[pd_last.symbol.isin(symbols)]
+        # pd_last = pd_last.loc[pd_last.symbol.isin(symbols)]
         pd_last = pd_last.set_index('symbol')
         dict_last = pd_last['last_time'].to_dict()
         batch_size = 1000
@@ -1164,8 +1219,8 @@ class StockPrice(StockEarning):
                     command = command_ori
                     count = 0
                     for entry in data:
-                        command += f"(N'{entry[0]}', N'{entry[1]}', '{entry[2]}', '{entry[3]}', '{entry[4]}', '{entry[5]}', " \
-                                   f"'{entry[6]}', '{entry[7]}'), \n"
+                        command += f"('{entry[0]}', '{entry[1]}', {entry[2]}, {entry[3]}, {entry[4]}, {entry[5]}, " \
+                                   f"{entry[6]}, {entry[7]}), \n"
                         count += 1
                         if count >= batch_size:
                             if '\n' in command:
@@ -1183,6 +1238,7 @@ class StockPrice(StockEarning):
             pd_listing_entry = self.pd_listing.loc[self.pd_listing.symbol == symbol]
 
             is_updated = False
+            label_reload_for_split = False
             if len(pd_listing_entry) == 0:
                 ipo_date = time_hard_start
             else:
@@ -1208,9 +1264,24 @@ class StockPrice(StockEarning):
                 query_date_start = unix2date(date2unix(last_date) + 3600 * 24)[:10]
                 pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
 
+                # First check whether whether there has been a split recently, if so, need to reload from IPO date
+                pd_price_local = self.get_price_range(symbol, date_start=query_date_start, source='local')
+                if len(pd_price_local) > 0:
+                    time_overlap_min = min(set(pd_price.time).intersection(set(pd_price_local.time)))
+                    adjclose_online = pd_price.loc[pd_price.time == time_overlap_min].iloc[0].adjclose
+                    adjclose_local = pd_price_local.loc[pd_price_local.time == time_overlap_min].iloc[0].adjclose
+                    ratio_diff = abs(adjclose_online / (adjclose_local + 10 ** -7))
+                    if (ratio_diff > 1.01) | (ratio_diff < 0.99):
+                        # if adjclose price on the first date in this pull is different between cloud and local
+                        # Need to repull everything
+                        print(f'\n - Repulling all data for {symbol} - \n', end='')
+                        query_date_start = unix2date(date2unix(ipo_date) - 3600 * 24)[:10]
+                        pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
+                        self.con.execute(f'Delete from price where symbol = "{symbol}"')
+
                 if len(pd_price) > 0:
                     pd_price['time'] = pd_price['time'].str[:10]
-                    pd_price_upload = pd_price.loc[pd_price.time >= query_date_start]
+                    pd_price_upload = pd_price.loc[(pd_price.time >= query_date_start) & (pd_price.time <= last_trading_day)]
                     if len(pd_price_upload) > 0:
                         label_global_update = True
                         keys = ['symbol', 'time', 'open', 'high', 'low', 'volume', 'close', 'adjclose']

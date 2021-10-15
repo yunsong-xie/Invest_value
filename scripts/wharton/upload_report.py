@@ -31,7 +31,7 @@ except:
     con = sqlite3.connect(path_fr_db)
 
 
-def get_column_info():
+def get_column_info(path_columns):
     """
     Output the column information. No input needed.
     Returns:
@@ -41,6 +41,7 @@ def get_column_info():
         (set): the columns with date info - column vs. type e.g. {'apdedateq', 'dldte'}
     """
     pd_columns = pd.read_csv(path_columns)
+    pd_columns.loc[pd_columns['Variable Name'] == 'TIC', 'Variable Name'] = 'SYMBOL'
     pd_columns = pd_columns.sort_values(by='Variable Name')
 
     desc_list = list(pd_columns['Description'])
@@ -51,12 +52,13 @@ def get_column_info():
     dict_types = pd_columns.set_index('Variable Name')['Type'].to_dict()
     set_types_date = {i.lower() for i in dict_types if dict_types[i] == 'date'}
     dict_types = {i.lower(): dict_types[i] if dict_types[i] != 'date' else 'str' for i in dict_types}
+
     print('Completed reading column info')
 
     return pd_columns, dict_columns, dict_types, set_types_date
 
 
-def read_report_data(path_csv):
+def read_report_data(path_csv, path_columns):
     """
     Read wharton report in csv format, and then output the simplifed columns.
     Simplifed column use exclude_keywords.csv file.
@@ -67,9 +69,9 @@ def read_report_data(path_csv):
     Returns:
         (pandas.dataframe): Simplifed wharton financial report
     """
-    pd_columns, dict_columns, dict_types, set_types_date = get_column_info()
+    pd_columns, dict_columns, dict_types, set_types_date = get_column_info(path_columns)
     print('Start reading wharton financial report csv file')
-    pd_wharton = pd.read_csv(path_csv)
+    pd_wharton = pd.read_csv(path_csv).rename(columns={'tic': 'symbol'})
     print('Completed reading wharton financial report csv file')
 
     columns = list(pd_wharton.columns)
@@ -143,6 +145,7 @@ def read_column_data(path_columns):
     """
 
     pd_columns = pd.read_csv(path_columns)
+    pd_columns.loc[pd_columns['Variable Name'] == 'TIC', 'Variable Name'] = 'SYMBOL'
     pd_columns = pd_columns.sort_values(by='Variable Name').rename(columns={'Variable Name': 'col_name'})
     pd_columns['col_name'] = pd_columns['col_name'].str.lower()
 
@@ -253,14 +256,15 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
     return pd_type
 
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
     # Read wharton financial report data
     path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
-    pd_wharton_fr = read_report_data(path_csv)
+    path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
+    pd_wharton_fr = read_report_data(path_csv, path_columns)
     pd_wharton_fr = finalize_report(pd_wharton_fr, write_out=False)
 
     # Read wharton financial report data column info table
-    path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
+
     pd_columns = read_column_data(path_columns)
 
     # Check condition of the db

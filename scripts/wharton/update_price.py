@@ -30,7 +30,7 @@ con_local = sqlite3.connect(path_fr_db)
 
 
 
-if __name__ == '__main__0':
+if __name__ == '__main__':
     pd_symbols = pd.read_sql("select distinct symbol from report", con_local)
     symbols = sorted(pd_symbols['symbol'])
     self = stock_price
