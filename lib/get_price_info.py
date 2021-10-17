@@ -1056,7 +1056,18 @@ class StockPrice(StockEarning):
 
         return pd_data
 
-    def get_price_dates(self, symbol, dates, n_shift=0):
+    def get_price_dates(self, symbol, dates, n_shift=0, avg=None):
+        """
+
+        Args:
+            symbol (list/str): stock symbol or symbols to query
+            dates (list): dates to query
+            n_shift (int): whether to shift the dates, default: 0
+            avg (int): price time avg span, default: None - no average
+
+        Returns:
+            (pandas.dataframe): output price info
+        """
         if type(dates) is str:
             dates = [dates]
         if n_shift:
@@ -1071,11 +1082,11 @@ class StockPrice(StockEarning):
         array_date = sorted(list(set(dates)) * len(symbols))
 
         pd_query = pd.DataFrame({'symbol': array_symbol, 'time': array_date})
-        pd_result = self.get_price_pd_query(pd_query)
+        pd_result = self.get_price_pd_query(pd_query, avg=avg)
 
         return pd_result
 
-    def get_price_pd_query(self, pd_input, time_col='rdq'):
+    def get_price_pd_query(self, pd_input, time_col='rdq', avg=None):
 
         pd_buff = pd_input.rename(columns={'symbol': 'symbol', time_col: 'time'})[['symbol', 'time']].drop_duplicates()
 
@@ -1087,35 +1098,50 @@ class StockPrice(StockEarning):
             command_insert = command_insert[:-3]
             self.con.execute(command_insert)
 
-        command = """with filter as (
-            select t1.symbol, t1.time as time_request, min(t2.time) as time 
-            from buff t1, price t2
-            where t1.symbol = t2.symbol
-            and t2.time >= t1.time
-            group by t1.symbol, t1.time
-        )
-        select t1.*, t2.close, t2.adjclose from 
-        filter t1 inner join price t2 
-        on t1.time = t2.time
-        and t1.symbol = t2.symbol
-        """
+        if avg is None:
+            command = f"""with filter as (
+                                        select t1.symbol, t1.time as time_request, min(t2.time) as time 
+                                        from buff t1, price t2
+                                        where t1.symbol = t2.symbol
+                                        and t2.time >= t1.time
+                                        group by t1.symbol, t1.time
+                                    )
+                                    select t1.*, t2.close, t2.adjclose from 
+                                    filter t1 inner join price t2 
+                                    on t1.time = t2.time
+                                    and t1.symbol = t2.symbol
+                                    """
+        else:
+
+            command = f"""select t1.symbol, t1.time as time_request, max(t2.time) as time, avg(t2.close) as close, 
+                            avg(t2.adjclose) as adjclose
+                            from buff t1, price t2
+                            where t1.symbol = t2.symbol
+                            and julianday(t2.time) - julianday(t1.time) <= 0
+                            and julianday(t2.time) - julianday(t1.time) >= -{avg}
+                            group by t1.symbol, t1.time
+                            """
         pd_query = pd.read_sql(command, self.con)
 
         self.con.rollback()
 
         return pd_query
 
-    def get_price_latest(self, symbol):
-        if type(symbol) is str:
-            symbols = [symbol]
+    def get_price_latest(self, symbol=None):
+        if symbol:
+            if type(symbol) is str:
+                symbols = [symbol]
+            else:
+                symbols = symbol
         else:
             symbols = symbol
-
-        filter_symbol = "('" + "', '".join(symbols) + "')"
+        if symbols:
+            filter_symbol = "where symbol in ('" + "', '".join(symbols) + "')"
+        else:
+            filter_symbol = ''
         query = f"""with filter as (
                         select symbol, max(time) as time 
-                        from price
-                        where  {filter_symbol}
+                        from price {filter_symbol}
                         group by symbol
                     )
                     select price.* 
@@ -1124,10 +1150,9 @@ class StockPrice(StockEarning):
                     and price.time = filter.time
                     """
         pd_price = pd.read_sql(query, self.con)
-        pd_price = pd_price.loc[pd_price.symbol.isin(symbols)]
         return pd_price
 
-    def get_marketcap_latest(self):
+    def get_marketcap_latest(self, symbol=None):
         """
         Pull the latest market cap for all stocks.
 
@@ -1136,34 +1161,36 @@ class StockPrice(StockEarning):
                                 symbol, rdq, adjclose_latest, marketcap_latest
         """
         query = """with filter as (select symbol, max(rdq) as rdq from report group by symbol)
-                            select t1.symbol, t1.rdq, t1.cshoq from 
+                            select t1.symbol, t1.rdq, avg(t1.cshoq) as shares from 
                             report t1 inner join filter
                             on t1.symbol = filter.symbol
                             and t1.rdq = filter.rdq
+                            group by t1.symbol
                 """
-        pd_shares = pd.read_sql(query, self.con).rename(columns={'cshoq': 'shares'})
-        pd_price_end = self.get_price_pd_query(pd_shares).rename(columns={'time_request': 'rdq'})
-        merge_keys = ['symbol', 'rdq']
-        pd_marketcap = pd_shares[merge_keys + ['shares']].merge(pd_price_end[merge_keys + ['adjclose']], on=merge_keys, how='inner')
+        pd_shares = pd.read_sql(query, self.con)
+        pd_price_end = self.get_price_latest(symbol)[['symbol', 'time', 'adjclose']]
+        pd_marketcap = pd_shares[['symbol', 'rdq', 'shares']].merge(pd_price_end[['symbol', 'time', 'adjclose']],
+                                                                    on='symbol', how='inner')
         pd_marketcap['marketcap'] = pd_marketcap['shares'] * pd_marketcap['adjclose']
         dict_rename = {'adjclose': 'adjclose_latest', 'marketcap': 'marketcap_latest'}
         pd_marketcap_latest = pd_marketcap.sort_values(by='marketcap', ascending=False).dropna().rename(columns=dict_rename)
-        pd_marketcap_latest = pd_marketcap_latest[['symbol', 'rdq', 'adjclose_latest', 'marketcap_latest']]
+        pd_marketcap_latest = pd_marketcap_latest[['symbol', 'rdq', 'time', 'adjclose_latest', 'marketcap_latest']]
         return pd_marketcap_latest
 
-    def get_marketcap_time(self, pd_data, time_col='rdq'):
+    def get_marketcap_time(self, pd_data, time_col='rdq', avg=None):
         """
         Get the marketcap with the indicated time columns (time_col)
         Args:
             pd_data (pandas.dataframe): Dataframe for input, should include symbol and [time_col]
             time_col (str): The time column, default: rdq.
+            avg (int): price time avg span, default: None - no average
 
         Returns:
             (pandas.dataframe): the marketcap dataframe. columns include
                                 symbol, [time_col], marketcap
         """
         pd_marketcap_latest = self.get_marketcap_latest()[['symbol', 'adjclose_latest', 'marketcap_latest']]
-        pd_marketcap_report = self.get_price_pd_query(pd_data, time_col=time_col).rename(columns={'time_request': time_col})
+        pd_marketcap_report = self.get_price_pd_query(pd_data, time_col=time_col, avg=avg).rename(columns={'time_request': time_col})
         pd_marketcap_report = pd_marketcap_report[['symbol', time_col, 'adjclose']]
 
         pd_marketcap_report = pd_marketcap_report.merge(pd_marketcap_latest, on='symbol', how='inner')

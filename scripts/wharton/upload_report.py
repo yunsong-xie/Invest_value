@@ -256,9 +256,10 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
     return pd_type
 
 
-if __name__ == '__main__0':
+if __name__ == '__main__':
     # Read wharton financial report data
     path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
+    print(f'Uploading file: {os.path.basename(path_csv)}')
     path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
     pd_wharton_fr = read_report_data(path_csv, path_columns)
     pd_wharton_fr = finalize_report(pd_wharton_fr, write_out=False)
