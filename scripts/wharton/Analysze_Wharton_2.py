@@ -10,6 +10,7 @@ import glob
 from matplotlib import pyplot as plt
 import lib as common_func
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+import xgboost
 
 pd.set_option('display.max_column', 60)
 pd.set_option('display.max_colwidth', 2400)
@@ -66,9 +67,9 @@ if __name__ == '__main__0':
     year_desc_positive_list = ['Operating Activities - Net Cash Flow', 'profit', 'Cash and Short-Term Investments']
     year_desc_grow_dict = {'ALL': {0: ['Operating Activities - Net Cash Flow', 'Revenue - Total', 'Stockholders Equity - Total',
                                        'profit', 'Cash and Short-Term Investments', 'Current Assets - Total']},
-                           0: {0.05: ['Revenue - Total'],
-                               0.051: ['Stockholders Equity - Total']},
-                           1: {0.05: ['Revenue - Total']}, }
+                           0: {0.015: ['Revenue - Total'],
+                               0.0151: ['Stockholders Equity - Total']},
+                           1: {0.005: ['Revenue - Total']}, }
 
     desc_list_all = list(set(desc_non_null_list + list(desc_output_dict) + desc_positive_list))
     _desc_greater_list = []
@@ -291,146 +292,176 @@ if __name__ == '__main__0':
     pd_data_ori = pd_data.copy()
     print('Completed data aggregation')
 
+if 1 == 1:
+    def plot_year_num_dist(pd_data):
+        pd_data_plot = pd_data.dropna()[['symbol', 'rdq_p']].copy()
+        pd_data_plot['year'] = pd_data_plot.rdq_p.str[:4].astype(int) + ((pd_data_plot.rdq_p.str[5:7].astype(int)-1 - 1)// 3) / 4
+        plt.hist(pd_data_plot['year'], bins=100)
 
-def plot_dist(pd_mdata, features_x):
-    fig, ax = plt.subplots(4, 5, figsize=(15, 7.5))
-    ax = fig.axes
-    for i, feature in enumerate(features_x):
-        dist = pd_mdata[feature]
-        ax[i].hist(dist, bins=35)
-        ax[i].set_title(feature)
-    fig.tight_layout()
+    def plot_feature_dist(pd_mdata, features_x):
+        fig, ax = plt.subplots(4, 5, figsize=(15, 7.5))
+        ax = fig.axes
+        for i, feature in enumerate(features_x):
+            dist = pd_mdata[feature]
+            ax[i].hist(dist, bins=35)
+            ax[i].set_title(feature)
+        fig.tight_layout()
 
+    def y_transform(y, direction='encode', func_shift=1, func_power=2):
+        if direction.lower() == 'encode':
+            y_output = (y + func_shift) ** func_power
+        elif direction.lower() == 'decode':
+            y_output = (y ** (1 / func_power)) - func_shift
+        else:
+            raise ValueError(f'direction can only be either encode or decode, input is {direction}')
+        return y_output
 
-def y_transform(y, direction='encode', func_shift=1, func_power=2):
-    if direction.lower() == 'encode':
-        y_output = (y + func_shift) ** func_power
-    elif direction.lower() == 'decode':
-        y_output = (y ** (1 / func_power)) - func_shift
-    else:
-        raise ValueError(f'direction can only be either encode or decode, input is {direction}')
-    return y_output
+    def get_model(pd_data, dict_transform, n_estimators=500, learning_rate=1, max_depth=3, tree_method=None,
+                  predictor=None):
 
+        n_estimators_list = n_estimators if type(n_estimators) in [list, np.ndarray, range] else [n_estimators]
+        learning_rate_list = learning_rate if type(learning_rate) in [list, np.ndarray, range] else [learning_rate]
 
-def get_model(pd_data, dict_transform, n_estimators=450):
-    n_year_x = dict_transform['n_year_x']
-    func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-    aug_size, aug_sigma = dict_transform['aug_size'], dict_transform['aug_sigma']
-    pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
-    pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
-    pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
+        n_year_x = dict_transform['n_year_x']
+        func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
+        aug_size, aug_sigma = dict_transform['aug_size'], dict_transform['aug_sigma']
+        pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
+        pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
+        pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
 
-    features_bvr = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
-    mc_bv_years = 2
-    features_x = []
-    for mc_bv_year in range(mc_bv_years):
-        pd_mdata[f'mc_bv_{mc_bv_year}'] = list(pd_data[f'marketcap_{mc_bv_year}'] / pd_data[f'book_value_{mc_bv_year}'])
+        features_bvr = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
+        mc_bv_years = 2
+        features_x = []
+        for mc_bv_year in range(mc_bv_years):
+            pd_mdata[f'mc_bv_{mc_bv_year}'] = list(pd_data[f'marketcap_{mc_bv_year}'] / pd_data[f'book_value_{mc_bv_year}'])
 
-    for i_year in range(n_year_x - 1):
-        feature_x = f'bv_growth_{i_year}'
-        pd_mdata[feature_x] = list(pd_data[f'book_value_{i_year}'] / pd_data[f'book_value_{i_year + 1}'])
-        features_x.append(feature_x)
-
-    for i_year in range(n_year_x):
-        for feature in features_bvr:
-            feature_x = f'bvr_{feature}_{i_year}'
-            pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'book_value_{i_year}'])
+        for i_year in range(n_year_x - 1):
+            feature_x = f'bv_growth_{i_year}'
+            pd_mdata[feature_x] = list(pd_data[f'book_value_{i_year}'] / pd_data[f'book_value_{i_year + 1}'])
             features_x.append(feature_x)
 
-    for feature in features_x:
-        col = np.log10(pd_mdata[feature])
-        mean, std = col.mean(), col.std()
-        dict_transform['mean'][feature] = mean
-        dict_transform['std'][feature] = std
-        col = (col - mean) / std
-        pd_mdata[feature] = col
+        for i_year in range(n_year_x):
+            for feature in features_bvr:
+                feature_x = f'bvr_{feature}_{i_year}'
+                pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'book_value_{i_year}'])
+                features_x.append(feature_x)
 
-    pd_mdata_cal = pd_mdata
-    n_extra = aug_size * len(pd_mdata_cal)
-    pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(aug_size)))]).iloc[:n_extra].copy()
-    for feature in features_x:
-        coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma
-        pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
-    pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
-    # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
-    regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
-    x_train, y_train = pd_mdata_cal[features_x].values, pd_mdata_cal['mc_growth_log'].values
-    y_train = y_transform(y_train, 'encode', func_shift, func_power)
-    regr.fit(x_train, y_train)
-    dict_transform['features_x'] = features_x
-    return dict_transform, regr
-
-
-def get_prediction(pd_data, dict_transform, regr):
-    n_year_x = dict_transform['n_year_x']
-    features_x = dict_transform['features_x']
-    func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-    pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
-    pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
-    pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
-
-    features_bvr = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
-    pd_mdata['mc_bv_0'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_0'])
-    pd_mdata['mc_bv_1'] = list(pd_data[f'marketcap_1'] / pd_data[f'book_value_1'])
-    for i_year in range(n_year_x - 1):
-        feature_x = f'bv_growth_{i_year}'
-        pd_mdata[feature_x] = list(pd_data[f'book_value_{i_year}'] / pd_data[f'book_value_{i_year + 1}'])
-
-    for i_year in range(n_year_x):
-        for feature in features_bvr:
-            feature_x = f'bvr_{feature}_{i_year}'
-            pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'book_value_{i_year}'])
-
-    for feature in dict_transform['mean']:
-        col = np.log10(pd_mdata[feature])
-        mean, std = dict_transform['mean'][feature], dict_transform['std'][feature]
-        col = (col - mean) / std
-        pd_mdata[feature] = col
-
-    X_cal = pd_mdata[features_x].values
-    y_pred_list = []
-    y_pred = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
-    y_pred_list.append(y_pred)
-    for _ in range(dict_transform['aug_size']):
-        pd_mdata_aug = pd_mdata[features_x].copy()
         for feature in features_x:
-            coeff = np.random.randn(len(pd_mdata_aug)) * aug_sigma
-            pd_mdata_aug[feature] = pd_mdata_aug[feature] + coeff
-        X_cal = pd_mdata_aug[features_x].values
-        y_pred_aug = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
-        y_pred_list.append(y_pred_aug)
-    y_pred_concat = np.concatenate(y_pred_list, axis=1)
-    y_pred_mean = y_pred_concat.mean(axis=1)
-    y_pred_std = y_pred_concat.std(axis=1)
-    return y_pred_mean, y_pred_std
+            col = np.log10(pd_mdata[feature])
+            mean, std = col.mean(), col.std()
+            dict_transform['mean'][feature] = mean
+            dict_transform['std'][feature] = std
+            col = (col - mean) / std
+            pd_mdata[feature] = col
+
+        pd_mdata_cal = pd_mdata
+        n_extra = aug_size * len(pd_mdata_cal)
+        pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(aug_size)))]).iloc[:n_extra].copy()
+        for feature in features_x:
+            coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma
+            pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
+        pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+        # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
+        #regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
+        regr_list = []
+        x_train, y_train = pd_mdata_cal[features_x].values, pd_mdata_cal['mc_growth_log'].values
+        y_train = y_transform(y_train, 'encode', func_shift, func_power)
+        time_start = time.time()
+        for i_regr in range(len(n_estimators_list)):
+            n_estimators = n_estimators_list[i_regr]
+            learning_rate = learning_rate_list[i_regr]
+            regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
+                                        predictor=predictor, tree_method=tree_method)
+            regr.fit(x_train, y_train)
+            regr_list.append(regr)
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rCompleted regression {i_regr + 1}/{len(n_estimators_list)} - Time {time_span} s', end='')
+        dict_transform['features_x'] = features_x
+        return dict_transform, regr_list
+
+    def get_prediction(pd_data, dict_transform, regr_list):
+        if type(regr_list) is list:
+            regr_list = regr_list
+        else:
+            regr_list = [regr_list]
+        n_year_x = dict_transform['n_year_x']
+        features_x = dict_transform['features_x']
+        func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
+        pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
+        pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
+        pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
+
+        features_bvr = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
+        pd_mdata['mc_bv_0'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_0'])
+        pd_mdata['mc_bv_1'] = list(pd_data[f'marketcap_1'] / pd_data[f'book_value_1'])
+        for i_year in range(n_year_x - 1):
+            feature_x = f'bv_growth_{i_year}'
+            pd_mdata[feature_x] = list(pd_data[f'book_value_{i_year}'] / pd_data[f'book_value_{i_year + 1}'])
+
+        for i_year in range(n_year_x):
+            for feature in features_bvr:
+                feature_x = f'bvr_{feature}_{i_year}'
+                pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'book_value_{i_year}'])
+
+        for feature in dict_transform['mean']:
+            col = np.log10(pd_mdata[feature])
+            mean, std = dict_transform['mean'][feature], dict_transform['std'][feature]
+            col = (col - mean) / std
+            pd_mdata[feature] = col
+
+        X_cal = pd_mdata[features_x].values
+        y_pred_list = []
+        for i_regr, regr in enumerate(regr_list):
+            y_pred = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
+            y_pred_list.append(y_pred)
+            for _ in range(dict_transform['aug_size']):
+            # for _ in range(1):
+                pd_mdata_aug = pd_mdata[features_x].copy()
+                for feature in features_x:
+                    coeff = np.random.randn(len(pd_mdata_aug)) * aug_sigma
+                    pd_mdata_aug[feature] = pd_mdata_aug[feature] + coeff
+                X_cal = pd_mdata_aug[features_x].values
+                y_pred_aug = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
+                y_pred_list.append(y_pred_aug)
+        y_pred_concat = np.concatenate(y_pred_list, axis=1)
+        y_pred_mean = y_pred_concat.mean(axis=1)
+        y_pred_std = y_pred_concat.std(axis=1)
+        return y_pred_mean, y_pred_std
+
+    def e2e_pred_data(pd_data, dict_transform, regr_list):
+        log_grow_pred_mean, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr_list)
+
+        head_keys = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
+                     'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
+        pd_data['log_growth_mc_pred_mean'] = log_grow_pred_mean
+        pd_data['log_growth_mc_pred_std'] = log_grow_pred_std
+        pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 2
+
+        pd_data['log_growth_mc'] = np.log10(pd_data['marketcap_p'] / pd_data['marketcap_0'])
+        pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
+        return pd_data
 
 
-def e2e_pred_data(pd_data, dict_transform, regr):
-    log_grow_pred_mean, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr)
-
-    head_keys = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
-                 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
-    pd_data['log_growth_mc_pred_mean'] = log_grow_pred_mean
-    pd_data['log_growth_mc_pred_std'] = log_grow_pred_std
-    pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 2
-
-    pd_data['log_growth_mc'] = np.log10(pd_data['marketcap_p'] / pd_data['marketcap_0'])
-    pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
-    return pd_data
-
+for i in range(850, 1000, 10):
+    print(i)
 
 if 1 == 1:
     mc_book_ratio = [5, 65]
     marketcap_min = 100
-    ratio_train = 0.8
-    ratio_dev = 0.1
+    ratio_train = 0.99
+    ratio_dev = 0.005
     n_year_x = 3
     func_shift, func_power = 2, 2
-    n_estimators = 1000
-    aug_size, aug_sigma = 35, 0.2
+    n_regr = 10
+    n_estimators_min, n_estimators_max = 650, 1200
+    learning_rate_min, learning_rate_max = 0.5, 1
+    max_depth, tree_method, predictor = 3, 'gpu_hist', 'gpu_predictor'
+    n_estimators_list = range(n_estimators_min, n_estimators_max, (n_estimators_max-n_estimators_min)//n_regr)
+    learning_rate_list = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max-learning_rate_min)/n_regr)
+    n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
+    learning_rate_list = list(learning_rate_list) + list(learning_rate_list)[::-1]
 
-    dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
-                      'aug_size': aug_size, 'aug_sigma': aug_sigma}
+    aug_size, aug_sigma = 25, 0.25
 
     pd_data = pd_data_ori.loc[pd_data_ori.num_p >= 4].copy()
     pd_data_extra = pd_data_ori.loc[(pd_data_ori.num_p < 4) | (pd_data_ori.num_p.isna())].copy()
@@ -455,12 +486,17 @@ if 1 == 1:
                               pd_data_extra.loc[(pd_data_extra.num_p >= 3)]]).copy()
     pd_data_test_extra = pd_data_extra.loc[(pd_data_extra.num_p < 3)].copy()
 
-    dict_transform, regr = get_model(pd_data_train, dict_transform, n_estimators=n_estimators)
+    regr_list_global = []
+    dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
+                      'aug_size': aug_size, 'aug_sigma': aug_sigma}
+    dict_transform, regr_list_global = get_model(pd_data_train, dict_transform, n_estimators=n_estimators_list,
+                                                 learning_rate=learning_rate_list, max_depth=max_depth, tree_method=tree_method,
+                                                 predictor=predictor)
 
-    pd_data_train = e2e_pred_data(pd_data_train, dict_transform, regr)
-    pd_data_dev = e2e_pred_data(pd_data_dev, dict_transform, regr)
-    pd_data_test = e2e_pred_data(pd_data_test, dict_transform, regr)
-    pd_data_test_extra = e2e_pred_data(pd_data_test_extra, dict_transform, regr)
+    pd_data_train = e2e_pred_data(pd_data_train, dict_transform, regr_list_global)
+    pd_data_dev = e2e_pred_data(pd_data_dev, dict_transform, regr_list_global)
+    pd_data_test = e2e_pred_data(pd_data_test, dict_transform, regr_list_global)
+    pd_data_test_extra = e2e_pred_data(pd_data_test_extra, dict_transform, regr_list_global)
 
     if 1 == 0:
         pd_data_train_plot = pd_data_train.copy()
