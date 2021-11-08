@@ -23,26 +23,20 @@ dir_fr = f'{DIR}\\static\\Financial_reports\\Wharton\\'
 path_fr_db = f'{dir_fr}/fr_wharton.db'
 
 
-def get_pd_view(pd_data, dict_columns, num=5):
-    pd_view = pd_data.iloc[:num].T
-    _keys = list(pd_view.keys())
-    pd_view = pd_view.reset_index()
-    pd_view['code'] = pd_view['index']
-    pd_view = pd_view[['code', 'index'] + _keys]
-    pd_view['index'] = pd_view['index'].replace(dict_columns)
-
-    pd_view = pd_view.sort_values(by='index')
-    pd_view = pd_view.rename(columns={'index': 'col_name'})
-    pd_view.index = np.arange(len(pd_view))
-    return pd_view
-
-
 try:
     _ = pd.read_sql("select * from col_name limit 10", con)
 except:
     con = sqlite3.connect(path_fr_db)
 
-if __name__ == '__main__0':
+query = """ select symbol, rdq from report where actq is NULL """
+pd_view = pd.read_sql(query, con)
+pd_view = pd_view.sort_values(by=['symbol', 'rdq'])
+
+pd_test = pd.read_csv(r'C:\Users\yunso\Desktop\sbeml7ciogsscc16.csv')
+pd_test.datadate.unique()
+
+
+if __name__ == '__main__':
 
     n_year_x = 3
 
@@ -98,7 +92,7 @@ if __name__ == '__main__0':
 
     symbols = ['AAPL', 'XOM', 'WMT', 'VTRS', 'ADAP', 'BABA', 'AMD', 'TSLA', 'CSBR', 'CDNA', 'EXPI', 'MIME',
                ]
-    symbols = []
+    #symbols = []
 
     query_symbol_filter = ' where '
     if symbols:
@@ -292,7 +286,7 @@ if __name__ == '__main__0':
     pd_data_ori = pd_data.copy()
     print('Completed data aggregation')
 
-if 1 == 1:
+if 'Define Function' == 'Define Function1':
     def plot_year_num_dist(pd_data):
         pd_data_plot = pd_data.dropna()[['symbol', 'rdq_p']].copy()
         pd_data_plot['year'] = pd_data_plot.rdq_p.str[:4].astype(int) + ((pd_data_plot.rdq_p.str[5:7].astype(int)-1 - 1)// 3) / 4
@@ -371,7 +365,7 @@ if 1 == 1:
             n_estimators = n_estimators_list[i_regr]
             learning_rate = learning_rate_list[i_regr]
             regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
-                                        predictor=predictor, tree_method=tree_method)
+                                        predictor=predictor, tree_method=tree_method, random_state=np.random.randint(999999))
             regr.fit(x_train, y_train)
             regr_list.append(regr)
             time_span = round(time.time() - time_start, 1)
@@ -441,27 +435,25 @@ if 1 == 1:
         pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
         return pd_data
 
-
-for i in range(850, 1000, 10):
-    print(i)
-
-if 1 == 1:
+if 'Training' == 'Training1':
     mc_book_ratio = [5, 65]
     marketcap_min = 100
     ratio_train = 0.99
     ratio_dev = 0.005
     n_year_x = 3
     func_shift, func_power = 2, 2
-    n_regr = 10
-    n_estimators_min, n_estimators_max = 650, 1200
-    learning_rate_min, learning_rate_max = 0.5, 1
+    n_regr = 5
+    n_estimators_min, n_estimators_max = 850, 1000
+    learning_rate_min, learning_rate_max = 0.75, 1
     max_depth, tree_method, predictor = 3, 'gpu_hist', 'gpu_predictor'
     n_estimators_list = range(n_estimators_min, n_estimators_max, (n_estimators_max-n_estimators_min)//n_regr)
     learning_rate_list = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max-learning_rate_min)/n_regr)
     n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
     learning_rate_list = list(learning_rate_list) + list(learning_rate_list)[::-1]
+    _ = min(len(n_estimators_list), len(learning_rate_list))
+    n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rate_list[:_]
 
-    aug_size, aug_sigma = 25, 0.25
+    aug_size, aug_sigma = 50, 0.2
 
     pd_data = pd_data_ori.loc[pd_data_ori.num_p >= 4].copy()
     pd_data_extra = pd_data_ori.loc[(pd_data_ori.num_p < 4) | (pd_data_ori.num_p.isna())].copy()
@@ -507,29 +499,32 @@ if 1 == 1:
         pd_data_test_plot = pd_data_test_plot.loc[pd_data_test_plot['log_growth_mc_pred_min'] >= 0.03]
         pd_data_test_extra_plot = pd_data_test_extra_plot.loc[pd_data_test_extra_plot['log_growth_mc_pred_min'] >= 0.03]
 
+    metric_plot = 'log_growth_mc_pred_min'
+    # metric_plot = 'log_growth_mc_pred_mean'
+
     if 1 == 1:
         val_min_threshold = 0.0
         fig, ax = plt.subplots(2, 4, figsize=(18, 9))
         for i_plot in range(2):
             val_min = val_min_threshold if i_plot == 0 else -5
-            pd_data_train_plot = pd_data_train.loc[pd_data_train['log_growth_mc_pred_min'] >= val_min]
-            pd_data_dev_plot = pd_data_dev.loc[pd_data_dev['log_growth_mc_pred_min'] >= val_min]
-            pd_data_test_plot = pd_data_test.loc[pd_data_test['log_growth_mc_pred_min'] >= val_min]
-            pd_data_test_extra_plot = pd_data_test_extra.loc[pd_data_test_extra['log_growth_mc_pred_min'] >= val_min]
-            ax[i_plot, 0].plot(pd_data_train_plot['log_growth_mc_pred_min'], pd_data_train_plot['log_growth_mc'], '.')
+            pd_data_train_plot = pd_data_train.loc[pd_data_train[metric_plot] >= val_min]
+            pd_data_dev_plot = pd_data_dev.loc[pd_data_dev[metric_plot] >= val_min]
+            pd_data_test_plot = pd_data_test.loc[pd_data_test[metric_plot] >= val_min]
+            pd_data_test_extra_plot = pd_data_test_extra.loc[pd_data_test_extra[metric_plot] >= val_min]
+            ax[i_plot, 0].plot(pd_data_train_plot[metric_plot], pd_data_train_plot['log_growth_mc'], '.')
             ax[i_plot, 0].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 0].set_ylabel('Actual Growth')
             ax[i_plot, 0].set_title('Training set')
 
-            ax[i_plot, 1].plot(pd_data_dev_plot['log_growth_mc_pred_min'], pd_data_dev_plot['log_growth_mc'], '.')
+            ax[i_plot, 1].plot(pd_data_dev_plot[metric_plot], pd_data_dev_plot['log_growth_mc'], '.')
             ax[i_plot, 1].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 1].set_ylabel('Actual Growth')
             ax[i_plot, 1].set_title('Dev set')
 
             pd_data_test_plot_3 = pd_data_test_plot.loc[pd_data_test_plot.num_p == 3]
             pd_data_test_plot_4 = pd_data_test_plot.loc[(pd_data_test_plot.num_p == 4)]
-            ax[i_plot, 2].plot(pd_data_test_plot_4['log_growth_mc_pred_min'], pd_data_test_plot_4['log_growth_mc'], '.', label='4')
-            ax[i_plot, 2].plot(pd_data_test_plot_3['log_growth_mc_pred_min'], pd_data_test_plot_3['log_growth_mc'], '.', label='3')
+            ax[i_plot, 2].plot(pd_data_test_plot_4[metric_plot], pd_data_test_plot_4['log_growth_mc'], '.', label='4')
+            ax[i_plot, 2].plot(pd_data_test_plot_3[metric_plot], pd_data_test_plot_3['log_growth_mc'], '.', label='3')
             ax[i_plot, 2].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 2].set_ylabel('Actual Growth')
             ax[i_plot, 2].set_title('Testing set')
@@ -537,8 +532,8 @@ if 1 == 1:
 
             pd_data_test_extra_plot_1 = pd_data_test_extra_plot.loc[pd_data_test_extra_plot.num_p == 1]
             pd_data_test_extra_plot_2 = pd_data_test_extra_plot.loc[pd_data_test_extra_plot.num_p == 2]
-            ax[i_plot, 3].plot(pd_data_test_extra_plot_2['log_growth_mc_pred_min'], pd_data_test_extra_plot_2['log_growth_mc'], '.', label='2')
-            ax[i_plot, 3].plot(pd_data_test_extra_plot_1['log_growth_mc_pred_min'], pd_data_test_extra_plot_1['log_growth_mc'], '.', label='1')
+            ax[i_plot, 3].plot(pd_data_test_extra_plot_2[metric_plot], pd_data_test_extra_plot_2['log_growth_mc'], '.', label='2')
+            ax[i_plot, 3].plot(pd_data_test_extra_plot_1[metric_plot], pd_data_test_extra_plot_1['log_growth_mc'], '.', label='1')
             ax[i_plot, 3].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 3].set_ylabel('Actual Growth')
             ax[i_plot, 3].set_title('Extra testing set')
@@ -548,11 +543,11 @@ if 1 == 1:
 
 
         pd_regr_train = pd.DataFrame({'y': pd_data_train_plot['log_growth_mc'], 'num_p': pd_data_train_plot['num_p'],
-                                      'y_pred': pd_data_train_plot['log_growth_mc_pred_min'], 'rdq': pd_data_train_plot['rdq_0']})
+                                      'y_pred': pd_data_train_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
         pd_regr_dev = pd.DataFrame({'y': pd_data_dev_plot['log_growth_mc'], 'num_p': pd_data_dev_plot['num_p'],
-                                    'y_pred': pd_data_dev_plot['log_growth_mc_pred_min'], 'rdq': pd_data_train_plot['rdq_0']})
+                                    'y_pred': pd_data_dev_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
         pd_regr_extra_test = pd.DataFrame({'y': pd_data_test_extra_plot['log_growth_mc'], 'num_p': pd_data_test_extra_plot['num_p'],
-                                           'y_pred': pd_data_test_extra_plot['log_growth_mc_pred_min'],
+                                           'y_pred': pd_data_test_extra_plot[metric_plot],
                                            'rdq': pd_data_train_plot['rdq_0']})
         thresholds = [0.03, 0.04, 0.05, 0.075, 0.1, 0.15]
         n_fig = len(thresholds)
@@ -566,7 +561,7 @@ if 1 == 1:
             else:
                 pd_dataset = pd_data_test_extra_plot
             pd_regr = pd.DataFrame({'y': pd_dataset['log_growth_mc'], 'num_p': pd_dataset['num_p'],
-                                    'y_pred': pd_dataset['log_growth_mc_pred_min'], 'rdq': pd_dataset['rdq_0']})
+                                    'y_pred': pd_dataset[metric_plot], 'rdq': pd_dataset['rdq_0']})
             for i, threshold in enumerate(thresholds):
                 if i < (len(thresholds) - 1):
                     pd_select = pd_regr.loc[(pd_regr.y_pred >= thresholds[i]) & (pd_regr.y_pred < thresholds[i+1])]
@@ -599,7 +594,7 @@ if 1 == 0:
     pd_marketcap_current_exe_1 = pd_data_exe[merge_cols].merge(pd_marketcap_exe_latest, on=merge_cols, how='left')
     pd_data_exe['marketcap_0'] = list(pd_marketcap_current_exe_1['marketcap_latest'])
 
-    log_grow_pred_exe_mean, log_grow_pred_exe_std = get_prediction(pd_data_exe, dict_transform, regr)
+    log_grow_pred_exe_mean, log_grow_pred_exe_std = get_prediction(pd_data_exe, dict_transform, regr_list_global)
     pd_data_exe['log_growth_mc_pred_mean'] = log_grow_pred_exe_mean
     pd_data_exe['log_growth_mc_pred_std'] = log_grow_pred_exe_std
     pd_data_exe['log_growth_mc_pred_min'] = log_grow_pred_exe_mean - log_grow_pred_exe_std * 2
@@ -609,10 +604,10 @@ if 1 == 0:
     pd_data_exe = pd_data_exe.sort_values('log_growth_mc_pred_min', ascending=False).copy()
     pd_data_exe.index = np.arange(len(pd_data_exe))
 
-    budget = 134766
-    leverage = 1.1
+    budget = 10211
+    leverage = 0.99
     metric_min = 0.03
-    n_stocks_max = 10
+    n_stocks_max = 7
 
     pd_data_exe_view = pd_data_exe.loc[pd_data_exe.log_growth_mc_pred_min >= metric_min].head(n_stocks_max)
     n_stocks = len(pd_data_exe_view)
@@ -620,7 +615,8 @@ if 1 == 0:
     pd_allocate = pd_prices[['symbol', 'adjclose']].copy()
     _budget = budget * leverage / n_stocks
     pd_allocate['num'] = (_budget / pd_allocate['adjclose']).astype(int)
-    pd_allocate = pd_data_exe_view[['symbol', 'log_growth_mc_pred_min', 'log_growth_mc_pred_mean', 'marketcap_0']].merge(pd_allocate, on='symbol', how='inner')
+    pd_allocate = pd_data_exe_view[['symbol', 'log_growth_mc_pred_min', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std',
+                                    'marketcap_0']].merge(pd_allocate, on='symbol', how='inner')
     pd_allocate = pd_allocate.sort_values('log_growth_mc_pred_min', ascending=False)
     margin_rate = budget / (pd_allocate['num'] * pd_allocate['adjclose']).sum()
 
@@ -635,7 +631,6 @@ if 1 == 0:
     c1, c2 = round(np.log10(b1), 5), round(np.log10(b2), 5)
     print(b1, b2)
     print(c1, c2)
-
 
 if 1 == 0:
     pd_data = pd_data_ori.copy()

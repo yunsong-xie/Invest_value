@@ -753,6 +753,7 @@ class StockPrice(StockEarning):
     """
     def __init__(self):
         super().__init__()
+        self.bool_rs_login = False
         self.dir_static = f'{os.path.dirname(DIR)}/static'
         self.dir_price = f'{self.dir_static}/pkl_price'
         self.pd_listing, self.pd_fm = None, None
@@ -761,8 +762,7 @@ class StockPrice(StockEarning):
         self.dict_pd_price = {}
         self.pd_cik = None
 
-    @staticmethod
-    def _get_fundamentals(pd_listing, source='robinhood'):
+    def _get_fundamentals(self, pd_listing, source='robinhood'):
         """
         Obtain stock fundamental data columns include:
         symbol, market_cap, headquarters_city, headquarters_state, sector, industry, country
@@ -795,8 +795,10 @@ class StockPrice(StockEarning):
         elif source.lower() == 'robinhood':
             # Robinhood even gives more info about the stock
             dict_login = misc.get_login_info()
-            rs.authentication.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
-                                    expiresIn=86400, by_sms=True)
+            if not self.bool_rs_login:
+                rs.authentication.login(username=dict_login['robinhood', 'username'], password=dict_login['robinhood', 'password'],
+                                        expiresIn=86400, by_sms=True)
+                self.bool_rs_login = True
 
             def get_fundamental_pack(_symbols):
                 """
@@ -844,7 +846,6 @@ class StockPrice(StockEarning):
         """
         Upload latest listing and fundamentals information to db
         """
-        _ = self.get_listing_info()
         try:
             _ = pd.read_sql("select * from listing limit 3", self.con)
         except:
@@ -953,11 +954,13 @@ class StockPrice(StockEarning):
                 # pd_fm.to_csv(path_fundamental, index=False)
 
                 # Every month update the symbol list to db. This is for wharton pull
-                self._upload_list_fundamentals(pd_listing_ori, pd_fm_ori)
-                self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.country == 'US') & (pd_fm_ori.market_cap >= 0.25)][['symbol']].copy()
                 self.upload_transaction('listing')
                 self.upload_transaction('fundamental')
-                _ = self.get_symbols(output_csv=True)
+                self._upload_list_fundamentals(pd_listing_ori, pd_fm_ori)
+                # self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.country == 'US') & (pd_fm_ori.market_cap >= 0.15)][['symbol']].copy()
+                self.pd_fm = pd_fm_ori.loc[(pd_fm_ori.market_cap >= 0.15)][['symbol']].copy()
+
+                _ = self.get_symbols(region='', min_cap=0.15, output_csv=True)
 
         return self.pd_listing
 
@@ -1321,7 +1324,7 @@ class StockPrice(StockEarning):
                 pd_price_upload_list, batch_cur_size = [], 0
 
             time_span = round(time.time() - time_start, 1)
-            print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)}', end='')
+            print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)} - {symbol}', end='')
 
         upload_price(pd_price_upload_list)
         if label_global_update:
