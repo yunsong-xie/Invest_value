@@ -1066,7 +1066,7 @@ class StockPrice(StockEarning):
             symbol (list/str): stock symbol or symbols to query
             dates (list): dates to query
             n_shift (int): whether to shift the dates, default: 0
-            avg (int): price time avg span, default: None - no average
+            avg (int/list): price time avg span, default: None - no average
 
         Returns:
             (pandas.dataframe): output price info
@@ -1115,13 +1115,19 @@ class StockPrice(StockEarning):
                                     and t1.symbol = t2.symbol
                                     """
         else:
-
+            if type(avg) is list:
+                if len(avg) == 1:
+                    avg_list = sorted([0, avg[0]])
+                else:
+                    avg_list = sorted(avg)
+            else:
+                avg_list = sorted([0, avg])
             command = f"""select t1.symbol, t1.time as time_request, max(t2.time) as time, avg(t2.close) as close, 
                             avg(t2.adjclose) as adjclose
                             from buff t1, price t2
                             where t1.symbol = t2.symbol
-                            and julianday(t2.time) - julianday(t1.time) <= 0
-                            and julianday(t2.time) - julianday(t1.time) >= -{avg}
+                            and julianday(t2.time) - julianday(t1.time) >= {avg_list[0]}
+                            and julianday(t2.time) - julianday(t1.time) <= {avg_list[1]}
                             group by t1.symbol, t1.time
                             """
         pd_query = pd.read_sql(command, self.con)
@@ -1186,7 +1192,7 @@ class StockPrice(StockEarning):
         Args:
             pd_data (pandas.dataframe): Dataframe for input, should include symbol and [time_col]
             time_col (str): The time column, default: rdq.
-            avg (int): price time avg span, default: None - no average
+            avg (int/list): price time avg span, default: None - no average
 
         Returns:
             (pandas.dataframe): the marketcap dataframe. columns include

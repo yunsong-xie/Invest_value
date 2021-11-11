@@ -7,10 +7,16 @@ import numpy as np
 import pandas as pd
 import time
 import glob
+
+import scipy.stats
 from matplotlib import pyplot as plt
 import lib as common_func
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-import xgboost
+import xgboost, scipy
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
 
 pd.set_option('display.max_column', 60)
 pd.set_option('display.max_colwidth', 2400)
@@ -263,8 +269,7 @@ if __name__ == '__main__0':
             select tf.symbol, tf.rdq, count(typ.rdq) as num_p, {col_query_avg_p}
             from filter_3_year tf, filter_0 typ
             where tf.symbol = typ.symbol 
-            and typ.rank - tf.rank >= 1 
-            and typ.rank - tf.rank <= 4
+            and typ.rank - tf.rank = 1 
             group by tf.symbol, tf.rdq, tf.datafqtr
             order by tf.symbol, tf.rdq, tf.datafqtr
         )
@@ -299,23 +304,35 @@ if __name__ == '__main__0':
     print('Completed wharton financial report data pull')
     # Add marketcap info
     pd_marketcap_report_0 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_0', avg=14)
+    print('Completed pulling 0 year price info')
     pd_marketcap_report_1 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_1', avg=14)
+    print('Completed pulling 1 year price info')
+    pd_marketcap_report_2 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_2', avg=14)
+    print('Completed pulling 2 year price info')
     pd_marketcap_report_q1 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_q1', avg=14)
+    print('Completed pulling 1 quarter price info')
     pd_marketcap_report_p = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_p', avg=14)
+    print('Completed pulling predicting price info')
 
     print('Completed market report data pull')
     pd_marketcap_report_0 = pd_marketcap_report_0.rename(columns={'marketcap': 'marketcap_0'})
     pd_marketcap_report_1 = pd_marketcap_report_1.rename(columns={'marketcap': 'marketcap_1'})
+    pd_marketcap_report_2 = pd_marketcap_report_2.rename(columns={'marketcap': 'marketcap_2'})
     pd_marketcap_report_q1 = pd_marketcap_report_q1.rename(columns={'marketcap': 'marketcap_q1'})
     pd_marketcap_report_p = pd_marketcap_report_p.rename(columns={'marketcap': 'marketcap_p'})
 
     pd_data = pd_data_raw.merge(pd_marketcap_report_0[['symbol', 'rdq_0', 'marketcap_0']], on=['symbol', 'rdq_0'], how='inner')
     pd_data = pd_data.merge(pd_marketcap_report_1[['symbol', 'rdq_1', 'marketcap_1']], on=['symbol', 'rdq_1'], how='inner')
+    pd_data = pd_data.merge(pd_marketcap_report_2[['symbol', 'rdq_2', 'marketcap_2']], on=['symbol', 'rdq_2'], how='inner')
     pd_data = pd_data.merge(pd_marketcap_report_q1[['symbol', 'rdq_q1', 'marketcap_q1']], on=['symbol', 'rdq_q1'], how='inner')
     pd_data = pd_data.merge(pd_marketcap_report_p[['symbol', 'rdq_p', 'marketcap_p']], on=['symbol', 'rdq_p'], how='left')
-    keys_front = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'marketcap_1', 'marketcap_q1']
+    keys_front = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'marketcap_q1', 'marketcap_1', 'marketcap_2']
     pd_data = pd_data[keys_front + [i for i in pd_data.columns if i not in keys_front]]
     pd_data = pd_data.sort_values(by='marketcap_0')
+    pd_data = pd_data.loc[(pd_data.marketcap_0 > 0) & (pd_data.marketcap_1 > 0) &
+                          (pd_data.marketcap_2 > 0) & (pd_data.marketcap_q1 > 0)]
+    pd_data = pd_data.loc[(pd_data.book_value_0 > 0) & (pd_data.book_value_1 > 0) &
+                          (pd_data.book_value_2 > 0) & (pd_data.book_value_q1 > 0)]
     pd_data_ori = pd_data.copy()
     print('Completed data aggregation')
 
@@ -324,7 +341,6 @@ if 'Define Function' == 'Define Function':
         pd_data_plot = pd_data.dropna()[['symbol', 'rdq_p']].copy()
         pd_data_plot['year'] = pd_data_plot.rdq_p.str[:4].astype(int) + ((pd_data_plot.rdq_p.str[5:7].astype(int) - 1 - 1) // 3) / 4
         plt.hist(pd_data_plot['year'], bins=100)
-
 
     def plot_feature_dist(pd_mdata, features_x):
         fig, ax = plt.subplots(4, 5, figsize=(15, 7.5))
@@ -335,16 +351,19 @@ if 'Define Function' == 'Define Function':
             ax[i].set_title(feature)
         fig.tight_layout()
 
-
-    def y_transform(y, direction='encode', func_shift=1, func_power=2):
+    def y_transform(y, direction='encode', func_shift=1, func_power=2, dict_transform=None):
         if direction.lower() == 'encode':
             y_output = (y + func_shift) ** func_power
+            median = np.quantile(y_output, 0.5)
+            std = y_output.std()
+            y_output = (y_output - median) / std / dict_transform['std_adjust']
+            return y_output, median, std
         elif direction.lower() == 'decode':
-            y_output = (y ** (1 / func_power)) - func_shift
+            y_before_norm = y * dict_transform['y_std'] * dict_transform['std_adjust'] + dict_transform['y_median']
+            y_output = (y_before_norm ** (1 / func_power)) - func_shift
+            return y_output
         else:
             raise ValueError(f'direction can only be either encode or decode, input is {direction}')
-        return y_output
-
 
     def prepare_features(pd_data):
         pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
@@ -353,12 +372,13 @@ if 'Define Function' == 'Define Function':
 
         features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_growth = ['book_value', 'revenue']
-        mc_bv_years = 2
+        mc_bv_years = 3
         for mc_bv_year in range(mc_bv_years):
             pd_mdata[f'mc_bv_{mc_bv_year}'] = list(pd_data[f'marketcap_{mc_bv_year}'] / pd_data[f'book_value_{mc_bv_year}'])
-        pd_mdata['mc_bv_q1'] = list(pd_data[f'marketcap_q1'] / pd_data[f'book_value_q1'])
+        pd_mdata['mc_bv_q1'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_q1'])
+        pd_mdata['mc_bv_q4'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_1'])
 
-        features_x = [f'mc_bv_{mc_bv_year}' for mc_bv_year in range(mc_bv_years)] + ['mc_bv_q1']
+        features_x = [f'mc_bv_{mc_bv_year}' for mc_bv_year in range(mc_bv_years)] + ['mc_bv_q1', 'mc_bv_q4']
 
         for feature in features_growth:
             for i_year in range(n_year_x - 1):
@@ -366,9 +386,9 @@ if 'Define Function' == 'Define Function':
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'{feature}_{i_year + 1}'])
                 features_x.append(feature_x)
 
-            for quarter in [1, 4]:
-                feature_x = f'{feature}_growth_q{quarter}'
-                pd_mdata[feature_x] = list(pd_data[f'{feature}_q0'] / pd_data[f'{feature}_q{quarter}'])
+            for i_quarter in [1, 4]:
+                feature_x = f'{feature}_growth_q{i_quarter}'
+                pd_mdata[feature_x] = list(pd_data[f'{feature}_0'] / pd_data[f'{feature}_q{i_quarter}'])
                 features_x.append(feature_x)
 
         for i_year in range(n_year_x):
@@ -376,40 +396,89 @@ if 'Define Function' == 'Define Function':
                 feature_x = f'bvr_{feature}_{i_year}'
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'book_value_{i_year}'])
                 features_x.append(feature_x)
+        for i_quarter in [1, 4]:
+            for feature in features_bvr_year:
+                feature_x = f'bvr_{feature}_q{i_quarter}'
+                pd_mdata[feature_x] = list(pd_data[f'{feature}_0'] / pd_data[f'book_value_q{i_quarter}'])
+                features_x.append(feature_x)
         return pd_mdata, features_x
 
+    def prepare_lstm_computing(pd_mdata, dict_transform, output_y=True):
+        # features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
+        features_bvr_year = []
+        features_growth = ['book_value', 'revenue']
+        n_year_x = dict_transform['n_year_x']
 
-    def get_model(pd_data, dict_transform, n_estimators=500, learning_rate=1, max_depth=3, tree_method=None,
-                  predictor=None):
+        time_stamps = list(range(n_year_x))[:0:-1] + ['q4', 'q1', '0']
+        x_array_list = []
+        for time_stamp in time_stamps:
+            _features = [f'bvr_{i}_{time_stamp}' for i in features_bvr_year] + [f'mc_bv_{time_stamp}'] + \
+                        [f'{i}_growth_{time_stamp}' for i in features_growth]
+            pd_array = pd_mdata[[_features[0]]].copy()
+            for col in _features[1:]:
+                if col in pd_mdata.columns:
+                    pd_array[col] = pd_mdata[col]
+                else:
+                    pd_array[col] = 0
+            x_array_list.append(pd_array.values)
+        x_array = np.concatenate(x_array_list, axis=1)
+        features_time_stamp = len(features_bvr_year) + len(features_growth) + 1
+        x_train = x_array.reshape((len(x_array), len(time_stamps), features_time_stamp))
+        if output_y:
+            y_train_ori = pd_mdata['mc_growth_log'].values
+            y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
+            dict_transform['y_median'] = y_median
+            dict_transform['y_std'] = y_std
+        else:
+            y_train = None
+
+        return x_train, y_train, dict_transform
+
+    def get_model_sklearn(pd_data, dict_transform, n_estimators=500, learning_rate=1, max_depth=3, tree_method=None, predictor=None):
 
         n_estimators_list = n_estimators if type(n_estimators) in [list, np.ndarray, range] else [n_estimators]
         learning_rate_list = learning_rate if type(learning_rate) in [list, np.ndarray, range] else [learning_rate]
 
         n_year_x = dict_transform['n_year_x']
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-        aug_size, aug_sigma = dict_transform['aug_size'], dict_transform['aug_sigma']
+        aug_sigma = dict_transform['aug_sigma']
+
         pd_mdata, features_x = prepare_features(pd_data)
+
+        features_bvr_year = ['cash_flow', 'revenue', 'profit']
+        features_growth = ['book_value', 'revenue']
+        features_x_select = ['mc_bv_0', 'mc_bv_1', 'mc_bv_q1']
+        for _ in features_growth:
+            features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
+        for _ in features_bvr_year:
+            features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & (('0' in i) | ('0' in i))]
 
         for feature in features_x:
             col = np.log10(pd_mdata[feature])
             mean, std = col.mean(), col.std()
             dict_transform['mean'][feature] = mean
             dict_transform['std'][feature] = std
-            col = (col - mean) / std
+            col = (col - mean) / std / dict_transform['std_adjust']
             pd_mdata[feature] = col
 
         pd_mdata_cal = pd_mdata
-        n_extra = aug_size * len(pd_mdata_cal)
-        pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(aug_size)))]).iloc[:n_extra].copy()
-        for feature in features_x:
-            coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma
-            pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
-        pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+
+        if dict_transform['aug_size'] > 0:
+            n_extra = aug_size * len(pd_mdata_cal)
+            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size'], )))])
+            pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
+            for feature in features_x:
+                coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma / dict_transform['std_adjust']
+                pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
+            pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+
         # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
         # regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
         regr_list = []
-        x_train, y_train = pd_mdata_cal[features_x].values, pd_mdata_cal['mc_growth_log'].values
-        y_train = y_transform(y_train, 'encode', func_shift, func_power)
+        x_train, y_train_ori = pd_mdata_cal[features_x_select].values, pd_mdata_cal['mc_growth_log'].values
+        y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
+        dict_transform['y_median'] = y_median
+        dict_transform['y_std'] = y_std
         time_start = time.time()
         for i_regr in range(len(n_estimators_list)):
             n_estimators = n_estimators_list[i_regr]
@@ -420,11 +489,56 @@ if 'Define Function' == 'Define Function':
             regr_list.append(regr)
             time_span = round(time.time() - time_start, 1)
             print(f'\rCompleted regression {i_regr + 1}/{len(n_estimators_list)} - Time {time_span} s', end='')
+        print()
+        dict_transform['features_x'] = features_x
+        dict_transform['features_x_select'] = features_x_select
+        return dict_transform, regr_list
+
+    def get_model_lstm(pd_data, dict_transform):
+
+        aug_sigma = dict_transform['aug_sigma']
+        pd_mdata, features_x = prepare_features(pd_data)
+
+        for feature in features_x:
+            col = np.log10(pd_mdata[feature])
+            mean, std = col.mean(), col.std()
+            dict_transform['mean'][feature] = mean
+            dict_transform['std'][feature] = std
+            col = (col - mean) / std / dict_transform['std_adjust']
+            pd_mdata[feature] = col
+
+        pd_mdata_cal = pd_mdata
+
+        if dict_transform['aug_size'] > 0:
+            n_extra = aug_size * len(pd_mdata_cal)
+            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size'], )))])
+            pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
+            for feature in features_x:
+                coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma / dict_transform['std_adjust']
+                pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
+            pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+
+        x_train, y_train, dict_transform = prepare_lstm_computing(pd_mdata_cal, dict_transform)
+
+        layer_input = tf.keras.layers.Input(shape=(x_train.shape[1], x_train.shape[2]))
+        # Shape [batch, time, features] => [batch, time, lstm_units]
+        x = tf.keras.layers.LSTM(dict_transform['lstm_units'])(layer_input)
+        x = tf.keras.layers.Dense(units=1)(x)
+        regr = tf.keras.models.Model(inputs=[layer_input], outputs=x)
+
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='mean_absolute_error', patience=5, mode='min')
+
+        regr.compile(loss=tf.losses.MeanSquaredError(),
+                           optimizer=tf.optimizers.Adam(),
+                           metrics=[tf.metrics.MeanAbsoluteError()])
+
+        _ = regr.fit(x_train, y_train, epochs=dict_transform['lstm_epochs'], batch_size=128, callbacks=[early_stopping])
+
+        regr_list = [regr]
         dict_transform['features_x'] = features_x
         return dict_transform, regr_list
 
-
-    def get_prediction(pd_data, dict_transform, regr_list, center_type='median'):
+    def get_prediction(pd_data, dict_transform, regr_list):
         if type(regr_list) is list:
             regr_list = regr_list
         else:
@@ -437,58 +551,75 @@ if 'Define Function' == 'Define Function':
         for feature in dict_transform['mean']:
             col = np.log10(pd_mdata[feature])
             mean, std = dict_transform['mean'][feature], dict_transform['std'][feature]
-            col = (col - mean) / std
+            col = (col - mean) / std / dict_transform['std_adjust']
             pd_mdata[feature] = col
 
         X_cal = pd_mdata[features_x].values
-        y_pred_list = []
-        for i_regr, regr in enumerate(regr_list):
-            y_pred = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
-            y_pred_list.append(y_pred)
-            for _ in range(dict_transform['aug_size']):
-                # for _ in range(1):
-                pd_mdata_aug = pd_mdata[features_x].copy()
-                for feature in features_x:
-                    coeff = np.random.randn(len(pd_mdata_aug)) * aug_sigma
-                    pd_mdata_aug[feature] = pd_mdata_aug[feature] + coeff
-                X_cal = pd_mdata_aug[features_x].values
-                y_pred_aug = y_transform(regr.predict(X_cal), 'decode', func_shift, func_power).reshape(X_cal.shape[0], 1)
-                y_pred_list.append(y_pred_aug)
-        y_pred_concat = np.concatenate(y_pred_list, axis=1)
-        if center_type.lower() == 'mean':
-            y_pred_mean = y_pred_concat.mean(axis=1)
-        elif center_type.lower() == 'median':
-            y_pred_mean = np.quantile(y_pred_concat, 0.5, axis=1)
+
+        # y_ori = pd_mdata['mc_growth_log'].values
+        # y_actual, y_median, y_std = y_transform(y_ori, 'encode', func_shift, func_power, dict_transform)
+        if dict_transform['aug_size'] > 0:
+            x_array_aug = np.concatenate([X_cal for _ in range(dict_transform['aug_size'])], axis=0)
+            coeff_array = np.random.randn(x_array_aug.shape[0], x_array_aug.shape[1]) * aug_sigma / dict_transform['std_adjust']
+            x_array_aug = x_array_aug + coeff_array
+            x_array_pred = np.concatenate([X_cal, x_array_aug])
         else:
-            raise ValueError('center_type has to be in ["mean", "median"]')
+            x_array_pred = X_cal
+        y_array_pred_list = []
+        for i_regr, regr in enumerate(regr_list):
+            _pd_mdata_pred = pd.DataFrame(data=x_array_pred, columns=features_x)
+            if 'keras' in str(type(regr)):
+                x_array_final, _, _ = prepare_lstm_computing(_pd_mdata_pred, dict_transform, output_y=False)
+            else:
+                x_array_final = _pd_mdata_pred[dict_transform['features_x_select']]
+            y_array_as_pred = regr.predict(x_array_final)
+            y_array_pred_entry = y_array_as_pred.reshape(dict_transform['aug_size'] + 1, X_cal.shape[0]).T
+            y_array_pred_list.append(y_array_pred_entry)
+        y_pred_concat_as_pred = np.concatenate(y_array_pred_list, axis=1)
+        y_pred_concat = y_transform(y_pred_concat_as_pred, 'decode', func_shift, func_power, dict_transform)
+        y_pred_mean = y_pred_concat.mean(axis=1)
+        y_pred_median = np.quantile(y_pred_concat, 0.5, axis=1)
         y_pred_std = y_pred_concat.std(axis=1)
-        return y_pred_mean, y_pred_std
+        return y_pred_mean, y_pred_median, y_pred_std
 
-
-    def e2e_pred_data(pd_data, dict_transform, regr_list):
-        log_grow_pred_mean, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr_list)
+    def e2e_pred_data(pd_data, dict_transform, regr_list, n_sigma=2):
+        log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr_list)
 
         head_keys = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
                      'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
         pd_data['log_growth_mc_pred_mean'] = log_grow_pred_mean
+        pd_data['log_growth_mc_pred_median'] = log_grow_pred_median
         pd_data['log_growth_mc_pred_std'] = log_grow_pred_std
-        pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 2
+        pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * n_sigma
 
         pd_data['log_growth_mc'] = np.log10(pd_data['marketcap_p'] / pd_data['marketcap_0'])
         pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
         return pd_data
 
-
 if 'Training' == 'Training':
-    mc_book_ratio = [1, 65]
+    predict_method = 'sklearn'
+    dict_revenue_growth_min = {'1': 0.1, '0': 0.35}
+    dict_book_value_growth_min = {'1': 0.1, '0': 0.35}
+    mc_book_ratio = [2, 65]
+    mc_revenue_ratio = [2, 65]
     marketcap_min = 100
     ratio_train = 0.65
-    ratio_dev = 0.25
+    ratio_dev = 0.2
     n_year_x = 3
     func_shift, func_power = 2, 2
+    std_adjust = 2
+    aug_size, aug_sigma = 100, 0.2
+
+    #################################################
+    # sklearn parameters
+    lstm_units = 32
+    epochs = 100
+    #################################################
+    # sklearn parameters
     n_regr = 5
-    n_estimators_min, n_estimators_max = 750, 950
+    n_estimators_min, n_estimators_max = 650, 950
     learning_rate_min, learning_rate_max = 0.85, 1
+    #################################################
     max_depth, tree_method, predictor = 3, 'gpu_hist', 'gpu_predictor'
     n_estimators_list = range(n_estimators_min, n_estimators_max, (n_estimators_max - n_estimators_min) // n_regr)
     learning_rate_list = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
@@ -497,22 +628,29 @@ if 'Training' == 'Training':
     _ = min(len(n_estimators_list), len(learning_rate_list))
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rate_list[:_]
 
-    aug_size, aug_sigma = 15, 0.2
-
-    pd_data = pd_data_ori.loc[pd_data_ori.num_p >= 4].copy()
-    pd_data_extra = pd_data_ori.loc[(pd_data_ori.num_p < 4) | (pd_data_ori.num_p.isna())].copy()
+    _pd_data = pd_data_ori.copy()
+    for i in dict_revenue_growth_min:
+        _pd_data = _pd_data.loc[_pd_data[f'revenue_{i}'] / _pd_data[f'revenue_{int(i) + 1}'] > dict_revenue_growth_min[i]]
+    for i in dict_book_value_growth_min:
+        _pd_data = _pd_data.loc[_pd_data[f'book_value_{i}'] / _pd_data[f'book_value_{int(i)+1}'] > dict_book_value_growth_min[i]]
+    pd_data = _pd_data.loc[~_pd_data.num_p.isna()].copy()
+    pd_data_extra = _pd_data.loc[_pd_data.num_p.isna()].copy()
 
     pd_data = pd_data.loc[((pd_data.marketcap_p / pd_data.marketcap_0) <= 6) &
                           ((pd_data.marketcap_p / pd_data.marketcap_0) >= 10 ** -1)]
     pd_data['datafqtr'] = pd_data['rdq_0'].str[:4].astype(float) + (pd_data['rdq_0'].str[5:7].astype(float) + 1) / 12
     pd_data = pd_data.loc[((pd_data.marketcap_0 / pd_data.book_value_0) <= mc_book_ratio[1]) &
                           ((pd_data.marketcap_0 / pd_data.book_value_0) >= mc_book_ratio[0])]
+    pd_data = pd_data.loc[((pd_data.marketcap_0 / pd_data.revenue_0) <= mc_revenue_ratio[1]) &
+                          ((pd_data.marketcap_0 / pd_data.revenue_0) >= mc_revenue_ratio[0])]
     pd_data = pd_data.loc[pd_data.marketcap_0 >= marketcap_min]
 
     pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_p / pd_data_extra.marketcap_0) <= 6) &
                                       ((pd_data_extra.marketcap_p / pd_data_extra.marketcap_0) >= 10 ** -1)]
     pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_0 / pd_data_extra.book_value_0) <= mc_book_ratio[1]) &
                                       ((pd_data_extra.marketcap_0 / pd_data_extra.book_value_0) >= mc_book_ratio[0])]
+    pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_0 / pd_data_extra.revenue_0) <= mc_revenue_ratio[1]) &
+                                      ((pd_data_extra.marketcap_0 / pd_data_extra.revenue_0) >= mc_revenue_ratio[0])]
     pd_data_extra = pd_data_extra.loc[pd_data_extra.marketcap_0 >= marketcap_min]
     pd_data = pd_data.sort_values(by='rdq_0')
     pd_data.index = np.arange(len(pd_data))
@@ -521,41 +659,46 @@ if 'Training' == 'Training':
     pd_data_dev = pd_data.iloc[n_threshold_train:(n_threshold_train + n_threshold_dev)].copy()
     pd_data_test = pd.concat([pd_data.iloc[(n_threshold_train + n_threshold_dev):],
                               pd_data_extra.loc[(pd_data_extra.num_p >= 3)]]).copy()
-    pd_data_test_extra = pd_data_extra.loc[(pd_data_extra.num_p < 3)].copy()
 
-    regr_list_global = []
+    regr_list = []
     dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
-                      'aug_size': aug_size, 'aug_sigma': aug_sigma}
-    dict_transform, regr_list_global = get_model(pd_data_train, dict_transform, n_estimators=n_estimators_list,
-                                                 learning_rate=learning_rate_list, max_depth=max_depth, tree_method=tree_method,
-                                                 predictor=predictor)
+                      'aug_size': aug_size, 'aug_sigma': aug_sigma, 'std_adjust': std_adjust, 'lstm_units': lstm_units ,
+                      'lstm_epochs': epochs}
+    if predict_method.lower() == 'sklearn':
+        dict_transform, regr_list = get_model_sklearn(pd_data_train, dict_transform, n_estimators=n_estimators_list,
+                                                      learning_rate=learning_rate_list, max_depth=max_depth, tree_method=tree_method,
+                                                      predictor=predictor)
+    elif predict_method.lower() == 'lstm':
+        dict_transform, regr_list = get_model_lstm(pd_data_train, dict_transform)
+    else:
+        raise ValueError('predict_method can only be in [lstm, sklearn]')
 
-    pd_data_train = e2e_pred_data(pd_data_train, dict_transform, regr_list_global)
-    pd_data_dev = e2e_pred_data(pd_data_dev, dict_transform, regr_list_global)
-    pd_data_test = e2e_pred_data(pd_data_test, dict_transform, regr_list_global)
-    pd_data_test_extra = e2e_pred_data(pd_data_test_extra, dict_transform, regr_list_global)
-
-    if 1 == 0:
-        pd_data_train_plot = pd_data_train.copy()
-        pd_data_dev_plot = pd_data_dev.copy()
-        pd_data_test_plot = pd_data_test.copy()
-        pd_data_test_extra_plot = pd_data_test_extra.copy()
-        pd_data_dev_plot = pd_data_dev_plot.loc[pd_data_dev_plot['log_growth_mc_pred_min'] >= 0.03]
-        pd_data_test_plot = pd_data_test_plot.loc[pd_data_test_plot['log_growth_mc_pred_min'] >= 0.03]
-        pd_data_test_extra_plot = pd_data_test_extra_plot.loc[pd_data_test_extra_plot['log_growth_mc_pred_min'] >= 0.03]
+    pd_data_train = e2e_pred_data(pd_data_train, dict_transform, regr_list, n_sigma=1.5)
+    pd_data_dev = e2e_pred_data(pd_data_dev, dict_transform, regr_list, n_sigma=1.5)
+    pd_data_test = e2e_pred_data(pd_data_test, dict_transform, regr_list, n_sigma=1.5)
 
     metric_plot = 'log_growth_mc_pred_min'
-    # metric_plot = 'log_growth_mc_pred_mean'
+    #metric_plot = 'log_growth_mc_pred_median'
+    #metric_plot = 'log_growth_mc_pred_mean'
 
     if 1 == 1:
+        def get_anova(pd_data, top_p=0.97):
+            pd_top = pd_data.loc[pd_data[metric_plot] >= pd_data[metric_plot].quantile(top_p)]
+            array_all, array_top = pd_data['log_growth_mc'], pd_top['log_growth_mc']
+            p_value = round(scipy.stats.f_oneway(array_all, array_top).pvalue, 4)
+            return p_value
+    print(f'Dev set p_value: {get_anova(pd_data_dev, top_p=0.97)}')
+    print(f'Test set p_value: {get_anova(pd_data_test, top_p=0.97)}')
+
+    thresholds = [0.03, 0.04, 0.05, 0.06, 0.07]
+    if 1 == 1:
         val_min_threshold = 0.0
-        fig, ax = plt.subplots(2, 4, figsize=(18, 9))
+        fig, ax = plt.subplots(2, 3, figsize=(18, 9))
         for i_plot in range(2):
             val_min = val_min_threshold if i_plot == 0 else -5
             pd_data_train_plot = pd_data_train.loc[pd_data_train[metric_plot] >= val_min]
             pd_data_dev_plot = pd_data_dev.loc[pd_data_dev[metric_plot] >= val_min]
             pd_data_test_plot = pd_data_test.loc[pd_data_test[metric_plot] >= val_min]
-            pd_data_test_extra_plot = pd_data_test_extra.loc[pd_data_test_extra[metric_plot] >= val_min]
             ax[i_plot, 0].plot(pd_data_train_plot[metric_plot], pd_data_train_plot['log_growth_mc'], '.')
             ax[i_plot, 0].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 0].set_ylabel('Actual Growth')
@@ -566,43 +709,26 @@ if 'Training' == 'Training':
             ax[i_plot, 1].set_ylabel('Actual Growth')
             ax[i_plot, 1].set_title('Dev set')
 
-            pd_data_test_plot_3 = pd_data_test_plot.loc[pd_data_test_plot.num_p == 3]
-            pd_data_test_plot_4 = pd_data_test_plot.loc[(pd_data_test_plot.num_p == 4)]
-            ax[i_plot, 2].plot(pd_data_test_plot_4[metric_plot], pd_data_test_plot_4['log_growth_mc'], '.', label='4')
-            ax[i_plot, 2].plot(pd_data_test_plot_3[metric_plot], pd_data_test_plot_3['log_growth_mc'], '.', label='3')
+            ax[i_plot, 2].plot(pd_data_test_plot[metric_plot], pd_data_test_plot['log_growth_mc'], '.')
             ax[i_plot, 2].set_xlabel('Predicted Growth mean min')
             ax[i_plot, 2].set_ylabel('Actual Growth')
             ax[i_plot, 2].set_title('Testing set')
-            ax[i_plot, 2].legend(loc=4)
 
-            pd_data_test_extra_plot_1 = pd_data_test_extra_plot.loc[pd_data_test_extra_plot.num_p == 1]
-            pd_data_test_extra_plot_2 = pd_data_test_extra_plot.loc[pd_data_test_extra_plot.num_p == 2]
-            ax[i_plot, 3].plot(pd_data_test_extra_plot_2[metric_plot], pd_data_test_extra_plot_2['log_growth_mc'], '.', label='2')
-            ax[i_plot, 3].plot(pd_data_test_extra_plot_1[metric_plot], pd_data_test_extra_plot_1['log_growth_mc'], '.', label='1')
-            ax[i_plot, 3].set_xlabel('Predicted Growth mean min')
-            ax[i_plot, 3].set_ylabel('Actual Growth')
-            ax[i_plot, 3].set_title('Extra testing set')
-            ax[i_plot, 3].legend(loc=4)
         fig.tight_layout()
 
         pd_regr_train = pd.DataFrame({'y': pd_data_train_plot['log_growth_mc'], 'num_p': pd_data_train_plot['num_p'],
                                       'y_pred': pd_data_train_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
         pd_regr_dev = pd.DataFrame({'y': pd_data_dev_plot['log_growth_mc'], 'num_p': pd_data_dev_plot['num_p'],
                                     'y_pred': pd_data_dev_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
-        pd_regr_extra_test = pd.DataFrame({'y': pd_data_test_extra_plot['log_growth_mc'], 'num_p': pd_data_test_extra_plot['num_p'],
-                                           'y_pred': pd_data_test_extra_plot[metric_plot],
-                                           'rdq': pd_data_train_plot['rdq_0']})
-        thresholds = [0.03, 0.04, 0.05, 0.075, 0.1, 0.15]
+
         n_fig = len(thresholds)
-        fig, ax = plt.subplots(3, n_fig, figsize=(18, 9))
+        fig, ax = plt.subplots(2, n_fig, figsize=(18, 9))
         ax = fig.axes
-        for j, dataset_type in enumerate(['Dev', 'Test', 'Extra Test']):
+        for j, dataset_type in enumerate(['Dev', 'Test']):
             if dataset_type == 'Dev':
                 pd_dataset = pd_data_dev_plot
             elif dataset_type == 'Test':
                 pd_dataset = pd_data_test_plot
-            else:
-                pd_dataset = pd_data_test_extra_plot
             pd_regr = pd.DataFrame({'y': pd_dataset['log_growth_mc'], 'num_p': pd_dataset['num_p'],
                                     'y_pred': pd_dataset[metric_plot], 'rdq': pd_dataset['rdq_0']})
             for i, threshold in enumerate(thresholds):
