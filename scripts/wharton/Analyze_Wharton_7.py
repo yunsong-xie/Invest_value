@@ -38,7 +38,7 @@ pd_view = pd_view.sort_values(by=['symbol', 'rdq'])
 pd_test = pd.read_csv(r'C:\Users\yunso\Desktop\sbeml7ciogsscc16.csv')
 pd_test.datadate.unique()
 
-if __name__ == '__main__0':
+if __name__ == '__main__':
 
     n_year_x = 3
 
@@ -94,8 +94,8 @@ if __name__ == '__main__0':
         year_desc_grow_dict_sql[key_time] = dict_grow
     year_col_positive_list = [dict_col_name[i] if i in dict_col_name else i for i in year_desc_positive_list]
 
-    symbols = ['AAPL', 'XOM', 'WMT', 'VTRS', 'ADAP', 'BABA', 'AMD', 'TSLA', 'CSBR', 'CDNA', 'EXPI', 'MIME']
-    symbols = []
+    symbols = ['AAPL', 'XOM', 'WMT', 'WERN', 'STE', 'HLT']
+    #symbols = []
 
     query_symbol_filter = ' where '
     if symbols:
@@ -166,7 +166,7 @@ if __name__ == '__main__0':
     col_query_avg_pq1 = 'max(tq.rdq) as rdq_pq1, ' + ', '.join([f'avg(tq.{i}) as {i}_pq1' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_pq2 = 'max(tq.rdq) as rdq_pq2, ' + ', '.join([f'avg(tq.{i}) as {i}_pq2' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_pq3 = 'max(tq.rdq) as rdq_pq3, ' + ', '.join([f'avg(tq.{i}) as {i}_pq3' for i in col_output_list_avg if i != 'rdq'])
-    col_query_avg_p = 'max(typ.rdq) as rdq_p, ' + ', '.join([f'avg(typ.{i}) as {i}_p' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_pq4 = 'max(tq.rdq) as rdq_pq4, ' + ', '.join([f'avg(tq.{i}) as {i}_pq4' for i in col_output_list_avg if i != 'rdq'])
 
 
     merge_query_x, merge_query_x_filter = '', ''
@@ -180,7 +180,7 @@ if __name__ == '__main__0':
         for key_item in col_output_list_avg:
             merge_query_x += f', t{key_time}.{key_item}_{key_time}'
 
-    p_list = ['p', 'pq1', 'pq2', 'pq3']
+    p_list = ['pq1', 'pq2', 'pq3', 'pq4']
     dict_merge_query_y = {}
     for key_time in p_list:
         merge_query_y = ''
@@ -188,8 +188,7 @@ if __name__ == '__main__0':
             merge_query_y += f', ty{key_time}.{key_item}_{key_time}'
         dict_merge_query_y[key_time] = merge_query_y
 
-
-    query_translate = ' rank, symbol, datafqtr, num_p, '
+    query_translate = ' rank, symbol, datafqtr, '
     for key_time in year_list + quarter_list + p_list:
         for col in col_output_list_avg:
             if col in dict_col_name_reverse:
@@ -319,18 +318,6 @@ if __name__ == '__main__0':
         where tf.symbol = tq.symbol and tf.rank - tq.rank = 4 
         group by tf.symbol, tf.rdq, tf.datafqtr
     ),
-    datap as (
-        with data_temp as (
-            select tf.symbol, tf.rdq, count(typ.rdq) as num_p, {col_query_avg_p}
-            from rdq_0_filter tf, filter2 typ
-            where tf.symbol = typ.symbol 
-            and tf.rank - typ.rank >= -4
-            and tf.rank - typ.rank <= -1
-            group by tf.symbol, tf.rdq, tf.datafqtr
-            order by tf.symbol, tf.rdq, tf.datafqtr
-        )
-        select * from data_temp
-    ),
     datapq1 as (
         select tf.symbol, tf.rdq, {col_query_avg_pq1}
         from rdq_0_filter tf, filter2 tq
@@ -349,6 +336,12 @@ if __name__ == '__main__0':
         where tf.symbol = tq.symbol and tf.rank - tq.rank = -3
         group by tf.symbol, tf.rdq, tf.datafqtr
     ),
+    datapq4 as (
+        select tf.symbol, tf.rdq, {col_query_avg_pq4}
+        from rdq_0_filter tf, filter2 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = -4
+        group by tf.symbol, tf.rdq, tf.datafqtr
+    ),
     data_merge_x as (
         select ty0.rank, ty0.symbol, ty0.datafqtr, ty0.rdq {merge_query_x}
         from data0 ty0 inner join data1 ty1 inner join data2 ty2
@@ -359,14 +352,9 @@ if __name__ == '__main__0':
         and ty0.symbol = tq1.symbol and ty0.rdq = tq1.rdq
         and ty0.symbol = tq4.symbol and ty0.rdq = tq4.rdq
     ), 
-    data_merge_xy_0 as (
-        select tyx.*, typ.num_p {dict_merge_query_y['p']}
-        from data_merge_x tyx left join datap typ
-        on tyx.symbol = typ.symbol and tyx.rdq = typ.rdq 
-    ), 
     data_merge_xy_1 as (
         select tyx.* {dict_merge_query_y['pq1']}
-        from data_merge_xy_0 tyx left join datapq1 typq1
+        from data_merge_x tyx left join datapq1 typq1
         on tyx.symbol = typq1.symbol and tyx.rdq = typq1.rdq
     ), 
     data_merge_xy_2 as (
@@ -379,8 +367,13 @@ if __name__ == '__main__0':
         from data_merge_xy_2 tyx left join datapq3 typq3
         on tyx.symbol = typq3.symbol and tyx.rdq = typq3.rdq
     ), 
+    data_merge_xy_4 as (
+        select tyx.* {dict_merge_query_y['pq4']}
+        from data_merge_xy_3 tyx left join datapq4 typq4
+        on tyx.symbol = typq4.symbol and tyx.rdq = typq4.rdq
+    ), 
     data_merge_xy as (
-        select * from data_merge_xy_3
+        select * from data_merge_xy_4
     ),
     data_translate as (
         select {query_translate} from data_merge_xy
@@ -391,37 +384,57 @@ if __name__ == '__main__0':
     order by rank
     """
     pd_data_raw = pd.read_sql(command_query, con)
+    pd_data_raw = pd_data_raw.sort_values(by=['rdq_0', 'symbol'])
     #pd_data_raw_1 = pd_data_raw.copy()
     # print(command_query)
     print('Completed wharton financial report data pull')
     # Add marketcap info
 
     rdq_list = [i for i in pd_data_raw.columns if 'rdq' in i not in ['rdq_q4', 'rdq_q0']]
-    pd_data = pd_data_raw.copy()
     pd_rdq_list = []
     for i_rdq, rdq in enumerate(rdq_list):
-        pd_rdq_list.append(pd_data[['symbol', rdq]].rename(columns={rdq: 'rdq'}))
+        pd_rdq_list.append(pd_data_raw[['symbol', rdq]].rename(columns={rdq: 'rdq'}))
     pd_rdq = pd.concat(pd_rdq_list).drop_duplicates().dropna().sort_values(by=['symbol', 'rdq'])
-    _pd_marketcap_report = stock_price.get_marketcap_time(pd_rdq, time_col='rdq', avg=14)
-    print('\rCompleted market report data pull')
-    for i_rdq, rdq in enumerate(rdq_list):
-        time_label = rdq.split('_')[-1]
-        pd_data = pd_data.merge(_pd_marketcap_report, left_on=['symbol', rdq], right_on=['symbol', 'rdq'], how='left')
-        pd_data = pd_data.rename(columns={'marketcap': f'marketcap_{time_label}'})
-        pd_data = pd_data[[i for i in pd_data.columns if i != 'rdq']]
 
-    keys_front = ['symbol', 'datafqtr'] + [f'marketcap_{i.split("_")[-1]}' for i in rdq_list]
-    pd_data = pd_data[keys_front + [i for i in pd_data.columns if i not in keys_front]]
-    pd_data = pd_data.sort_values(by='marketcap_0')
-    pd_data = pd_data.loc[(pd_data.marketcap_0 > 0) & (pd_data.marketcap_1 > 0) &
-                          (pd_data.marketcap_2 > 0) & (pd_data.marketcap_q1 > 0)]
-    pd_data = pd_data.loc[(pd_data.book_value_0 > 0) & (pd_data.book_value_1 > 0) &
-                          (pd_data.book_value_2 > 0) & (pd_data.book_value_q1 > 0)]
-    pd_data = pd_data.sort_values(by=['rdq_0', 'symbol'])
-    pd_data_ori = pd_data.copy()
-    print('Completed data aggregation')
+    if 1 == 0:
+        _pd_marketcap_report = stock_price.get_marketcap_time(pd_rdq, time_col='rdq', avg=14)
+
+        pd_data = pd_data_raw.copy()
+        print('\rCompleted market report data pull')
+        for i_rdq, rdq in enumerate(rdq_list):
+            time_label = rdq.split('_')[-1]
+            pd_data = pd_data.merge(_pd_marketcap_report, left_on=['symbol', rdq], right_on=['symbol', 'rdq'], how='left')
+            pd_data = pd_data.drop_duplicates()
+            pd_data = pd_data.rename(columns={'marketcap': f'marketcap_{time_label}'})
+            pd_data = pd_data[[i for i in pd_data.columns if i != 'rdq']]
+
+        keys_front = ['symbol', 'datafqtr'] + [f'marketcap_{i.split("_")[-1]}' for i in rdq_list]
+        pd_data = pd_data[keys_front + [i for i in pd_data.columns if i not in keys_front]]
+        pd_data = pd_data.sort_values(by=['rdq_0', 'symbol'])
+        pd_data = pd_data.loc[~(pd_data.marketcap_0.isna() | pd_data.marketcap_1.isna() | pd_data.marketcap_2.isna())]
+        pd_data_ori = pd_data.copy()
+        print('Completed data aggregation')
 
 if 'Define Function' == 'Define Function':
+    def convert_decision_time(decision_time):
+        if type(decision_time) in [float, int]:
+            if decision_time < 1900:
+                raise ValueError("decision_time has to be the recent year")
+            else:
+                _year, _days = int(decision_time // 1), (decision_time - decision_time // 1) * 361
+                _month = str(max(int(_days // 30), 1)).rjust(2, '0')
+                _day = str(max(round(int(_days % 30)), 1)).rjust(2, '0')
+                decision_time_final = f'{_year}-{_month}-{_day}'
+        else:
+            _info = decision_time.split('-')
+            if len(_info) == 1:
+                decision_time_final = f'{_info[0]}-01-01'
+            elif len(_info) == 2:
+                decision_time_final = f'{_info[0]}-{_info[1]}-01'
+            else:
+                decision_time_final = decision_time
+        return decision_time_final
+
     def plot_year_num_dist(pd_data):
         pd_data_plot = pd_data.dropna()[['symbol', 'rdq_p']].copy()
         pd_data_plot['year'] = pd_data_plot.rdq_p.str[:4].astype(int) + ((pd_data_plot.rdq_p.str[5:7].astype(int) - 1 - 1) // 3) / 4
@@ -697,7 +710,15 @@ if 'Define Function' == 'Define Function':
         pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
         return pd_data
 
-if 'Training' == 'Training':
+
+if 1 == 1:
+    pd_data = pd_data_ori.copy()
+    decision_time = 2014
+
+    decision_time_final = convert_decision_time(decision_time)
+
+
+if 'Training' == 'Training0':
     predict_method = 'sklearn'
     dict_revenue_growth_min = {'1': 0.0, '0': 0.1}
     dict_book_value_growth_min = {'1': 0.0, '0': 0.1}

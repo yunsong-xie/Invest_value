@@ -1169,12 +1169,17 @@ class StockPrice(StockEarning):
             (pandas.dataframe): return data with the followed columns:
                                 symbol, rdq, adjclose_latest, marketcap_latest
         """
-        query = """with filter as (select symbol, max(rdq) as rdq from report group by symbol)
-                            select t1.symbol, t1.rdq, avg(t1.cshoq) as shares from 
-                            report t1 inner join filter
-                            on t1.symbol = filter.symbol
-                            and t1.rdq = filter.rdq
-                            group by t1.symbol
+        query = """with filter as (
+                        select symbol, max(rdq) as rdq from report 
+                        where cshoq is not NULL
+                        group by symbol
+                )
+        
+                select t1.symbol, t1.rdq, avg(t1.cshoq) as shares from 
+                report t1 inner join filter
+                on t1.symbol = filter.symbol
+                and t1.rdq = filter.rdq
+                group by t1.symbol
                 """
         pd_shares = pd.read_sql(query, self.con)
         pd_price_end = self.get_price_latest(symbol)[['symbol', 'time', 'adjclose']]
