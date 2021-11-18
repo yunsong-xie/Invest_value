@@ -757,10 +757,12 @@ class StockPrice(StockEarning):
         self.dir_static = f'{os.path.dirname(DIR)}/static'
         self.dir_price = f'{self.dir_static}/pkl_price'
         self.pd_listing, self.pd_fm = None, None
+        self.pd_shares, self.pd_price_end = None, None
         self.con = misc.get_sql_con()
         self.pd_listing = self.get_listing_info()
         self.dict_pd_price = {}
         self.pd_cik = None
+
 
     def _get_fundamentals(self, pd_listing, source='robinhood'):
         """
@@ -1169,22 +1171,24 @@ class StockPrice(StockEarning):
             (pandas.dataframe): return data with the followed columns:
                                 symbol, rdq, adjclose_latest, marketcap_latest
         """
-        query = """with filter as (
-                        select symbol, max(rdq) as rdq from report 
-                        where cshoq is not NULL
-                        group by symbol
-                )
-        
-                select t1.symbol, t1.rdq, avg(t1.cshoq) as shares from 
-                report t1 inner join filter
-                on t1.symbol = filter.symbol
-                and t1.rdq = filter.rdq
-                group by t1.symbol
-                """
-        pd_shares = pd.read_sql(query, self.con)
-        pd_price_end = self.get_price_latest(symbol)[['symbol', 'time', 'adjclose']]
-        pd_marketcap = pd_shares[['symbol', 'rdq', 'shares']].merge(pd_price_end[['symbol', 'time', 'adjclose']],
-                                                                    on='symbol', how='inner')
+        if self.pd_shares is None:
+            query = """with filter as (
+                            select symbol, max(rdq) as rdq from report 
+                            where cshoq is not NULL
+                            group by symbol
+                    )
+            
+                    select t1.symbol, t1.rdq, avg(t1.cshoq) as shares from 
+                    report t1 inner join filter
+                    on t1.symbol = filter.symbol
+                    and t1.rdq = filter.rdq
+                    group by t1.symbol
+                    """
+            self.pd_shares = pd.read_sql(query, self.con)
+            self.pd_price_end = self.get_price_latest(symbol)[['symbol', 'time', 'adjclose']]
+
+        pd_marketcap = self.pd_shares[['symbol', 'rdq', 'shares']].merge(self.pd_price_end[['symbol', 'time', 'adjclose']],
+                                                                         on='symbol', how='inner')
         pd_marketcap['marketcap'] = pd_marketcap['shares'] * pd_marketcap['adjclose']
         dict_rename = {'adjclose': 'adjclose_latest', 'marketcap': 'marketcap_latest'}
         pd_marketcap_latest = pd_marketcap.sort_values(by='marketcap', ascending=False).dropna().rename(columns=dict_rename)
@@ -1342,3 +1346,4 @@ class StockPrice(StockEarning):
             self.upload_transaction('price')
 
 self = StockPrice()
+stock_price = self
