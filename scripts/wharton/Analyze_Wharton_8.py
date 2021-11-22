@@ -14,6 +14,7 @@ import xgboost, scipy
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import multiprocessing as mp
 
 
 pd.set_option('display.max_column', 75)
@@ -457,6 +458,7 @@ if 'Define Function' == 'Define Function':
         keys_remove = ['num_min']
         keys_head = ['datatype', 'symbol', 'datafqtr', 'num_p']
         pd_train = pd_train[keys_head + [i for i in pd_train.columns if i not in keys_remove + keys_head]]
+        pd_train['num_p'] = pd_train['num_p'] / 4
         return pd_train
 
     def prepare_features(pd_data, dict_transform, data_type='training'):
@@ -494,7 +496,7 @@ if 'Define Function' == 'Define Function':
         pd_mdata['num'] = pd_data['num']
         pd_mdata['num_p'] = pd_data['num_p']
 
-        features_x = list(pd_mdata.columns)
+        features_x = [i for i in pd_mdata.columns if 'mc_bv' in i] + ['num_p']
 
         for feature in features_growth:
             for i_year in range(n_year_x - 1):
@@ -597,13 +599,6 @@ if 'Define Function' == 'Define Function':
 
     def get_model_sklearn(pd_data, dict_transform):
 
-        n_estimators, learning_rate = dict_transform['n_estimators_list'], dict_transform['learning_rates']
-        max_depth, tree_method = dict_transform['max_depth'], dict_transform['tree_method']
-        predictor = dict_transform['predictor']
-
-        n_estimators_list = n_estimators if type(n_estimators) in [list, np.ndarray, range] else [n_estimators]
-        learning_rate_list = learning_rate if type(learning_rate) in [list, np.ndarray, range] else [learning_rate]
-
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
         aug_sigma = dict_transform['aug_sigma']
 
@@ -612,10 +607,19 @@ if 'Define Function' == 'Define Function':
         features_bvr_year = ['cur_asset', 'cash_flow', 'revenue', 'profit']
         features_growth = ['book_value', 'revenue']
         features_x_select = ['mc_bv_0', 'mc_bv_1', 'num_p']
+
+        features_bvr_year = ['cur_asset', 'cash_flow', 'revenue', 'profit']
+        features_growth = ['book_value', 'revenue']
+        features_x_select = ['num_p', 'mc_bv_0']
+        features_growth_time_label = ['year']
+
         for _ in features_growth:
             # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
             # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i)]
-            features_x_select += [i for i in features_x if (_ in i) & ('growth' in i)]
+            if 'year' in features_growth_time_label:
+                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q' not in i) & ('0' in i)]
+            if 'quarter' in features_growth_time_label:
+                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q' in i)]
         for _ in features_bvr_year:
             features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & (('0' in i) | ('0' in i))]
         for feature in features_x:
@@ -623,7 +627,7 @@ if 'Define Function' == 'Define Function':
                 dict_transform['mean'][feature] = 0
                 dict_transform['std'][feature] = 1
             else:
-                ind_neg = pd_mdata[feature] < 0
+                ind_neg = pd_mdata[feature] <= 0
                 if any(ind_neg):
                     pd_mdata.loc[ind_neg, feature] = pd_mdata.loc[pd_mdata[feature] > 0, feature].min()
                 col = np.log10(pd_mdata[feature].values)
@@ -646,28 +650,79 @@ if 'Define Function' == 'Define Function':
                     pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
             pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
 
-        # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
-        # regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
-        regr_list = []
         x_train, y_train_ori = pd_mdata_cal[features_x_select].values, pd_mdata_cal['mc_growth_log'].values
         y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
-        weight_train = pd_mdata_cal['weight']
+        weight_train = pd_mdata_cal['weight'].values
         dict_transform['y_median'] = y_median
         dict_transform['y_std'] = y_std
-        time_start = time.time()
-        for i_regr in range(len(n_estimators_list)):
-            n_estimators = n_estimators_list[i_regr]
-            learning_rate = learning_rate_list[i_regr]
-            regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
-                                        predictor=predictor, tree_method=tree_method, random_state=np.random.randint(999999))
-            regr.fit(x_train, y_train, sample_weight=weight_train)
-            regr_list.append(regr)
-            time_span = round(time.time() - time_start, 1)
-            print(f'\rCompleted regression {i_regr + 1}/{len(n_estimators_list)} - Time {time_span} s', end='')
-        print()
+
+        pd_estimator = pd.DataFrame({'estimator': dict_transform['n_estimators_list'],
+                                     'learning_rate': dict_transform['learning_rates']})
+        pd_estimator['state'] = np.random.randint(9999999, size=len(pd_estimator))
+        pd_estimator = pd_estimator.iloc[sorted(range(len(pd_estimator)), key=lambda x: np.random.random())]
+
+        dict_regr_parameter = {i: dict_transform[i] for i in ['max_depth', 'tree_method', 'predictor']}
+
+        if dict_transform['n_threads'] > 1:
+            n_threads = dict_transform['n_threads']
+            mp_queue = mp.Queue()
+
+            for i_thread in range(n_threads):
+                pd_estimator_thread = pd_estimator.iloc[i_thread: (i_thread + len(pd_estimator) // n_threads)]
+                mp.Process(target=sklearn_training_thread, args=(pd_estimator_thread, x_train, y_train, weight_train,
+                                                                 dict_regr_parameter, mp_queue)).start()
+
+            return_count, regr_list, time_start = 0, [], time.time()
+
+            while return_count < n_threads:
+                time.sleep(0.1)
+                if not mp_queue.empty():
+                    _result = mp_queue.get()
+                    regr_list += _result
+                    return_count += 1
+                time_span = time.time() - time_start
+                if time_span > 180:
+                    raise ChildProcessError('Something went wrong')
+        else:
+            pd_estimator_thread = pd_estimator
+            regr_list = sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train, dict_regr_parameter)
+
         dict_transform['features_x'] = features_x
         dict_transform['features_x_select'] = features_x_select
         return dict_transform, regr_list
+
+    def sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train, dict_regr_parameter, mp_queue=None):
+
+        max_depth, tree_method = dict_regr_parameter['max_depth'], dict_regr_parameter['tree_method']
+        predictor = dict_regr_parameter['predictor']
+
+        regr_list = []
+
+        time_start = time.time()
+        for i_regr in range(len(pd_estimator_thread)):
+            n_estimators = int(pd_estimator_thread.iloc[i_regr]['estimator'])
+            learning_rate = pd_estimator_thread.iloc[i_regr]['learning_rate']
+            state = int(pd_estimator_thread.iloc[i_regr]['state'])
+            if dict_transform['regr_type'] == 'GB':
+                regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
+                                            predictor=predictor, tree_method=tree_method, random_state=state)
+            elif dict_transform['regr_type'] == 'RF':
+                regr = xgboost.XGBRFRegressor(n_estimators=n_estimators, num_parallel_tree=n_estimators,
+                                              max_depth=max_depth, learning_rate=learning_rate,
+                                              predictor=predictor, random_state=state, n_jobs=6)
+            else:
+                raise KeyError('regr_type can only be [GB, RF]')
+            regr.fit(x_train, y_train, sample_weight=weight_train)
+            regr_list.append(regr)
+
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rCompleted regression {i_regr + 1}/{len(pd_estimator_thread)} - Time {time_span} s', end='')
+        print()
+
+        if mp_queue is None:
+            return regr_list
+        else:
+            mp_queue.put(regr_list)
 
     def get_prediction(pd_data, dict_transform, regr_list):
         if type(regr_list) is list:
@@ -731,49 +786,305 @@ if 'Define Function' == 'Define Function':
         pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
         return pd_data
 
-if 'Training' == 'Training0':
+    def date_month_convertion(data, bool_end=False):
+        """
+        Convert between 'yyyy-mm-dd' and number of months
+        Args:
+            data (str/int): input data either 'yyyy-mm-dd' or number of months
+            bool_end (bool): only used in date convertion, whether to output the end of the month
 
+        Returns:
+            (str/int): depend on the direction of the convertion return either number of months or 'yyyy-mm-dd'
+        """
+        if type(data) is int:
+            # convert number of months to 'yyyy-mm-dd'
+            year = (data) // 12
+            month = data % 12
+            month_str = str(month + 1).rjust(2, '0')
+            if bool_end:
+                date_end = {1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+                output = f'{year}-{month_str}-{date_end[int(month + 1)]}'
+            else:
+                output = f'{year}-{month_str}-01'
+
+        else:
+            # convert 'yyyy-mm-dd' to number of months
+            data = str(data)
+            output = int(data[:4]) * 12 + int(data[5:7]) - 1
+        return output
+
+    def invest_period_operation(pd_holding, pd_data_operate, dict_decision_time, dict_transform):
+
+        decision_time_final = dict_decision_time['start']
+        decision_time_final_end = dict_decision_time['end']
+        decision_time_sell_can = str(pd.to_datetime(decision_time_final) - pd.to_timedelta(f'390 days'))[:10]
+        decision_time_buy_can = str(pd.to_datetime(decision_time_final) - pd.to_timedelta(f'1800 days'))[:10]
+
+        pd_data_train_pre = pd_data_operate.loc[(pd_data_operate.rdq_0 <= decision_time_final) &
+                                                (pd_data_operate['rdq_0'] <= decision_time_final)]
+
+        # prepare the data for the training data
+        pd_data_train_list = []
+        for tq in (np.arange(4) + 1)[::-1]:
+            if tq == 4:
+                pd_temp = pd_data_train_pre.loc[(pd_data_train_pre[f'rdq_pq{tq}'] <= decision_time_final)].copy()
+            else:
+                pd_temp = pd_data_train_pre.loc[((pd_data_train_pre[f'rdq_pq{tq + 1}'] >= decision_time_final) |
+                                                 pd_data_train_pre[f'rdq_pq{tq + 1}'].isna()) &
+                                                (pd_data_train_pre[f'rdq_pq{tq}'] < decision_time_final)].copy()
+            pd_temp['num'] = tq / 4
+            pd_temp['marketcap_p'], pd_temp['rdq_p'] = pd_temp[f'marketcap_pq{tq}'], pd_temp[f'rdq_pq{tq}']
+            pd_data_train_list.append(pd_temp)
+        pd_data_train = pd.concat(pd_data_train_list).sort_values(by=['rdq_0', 'symbol'])
+        pd_data_train['datatype'] = 'train'
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'num_valid', 'num', 'marketcap_p', 'rdq_p']
+        pd_data_train = pd_data_train[head_keys + [i for i in pd_data_train.columns if i not in head_keys]]
+
+        # prepare the data for the stocks candidates to buy
+        pd_data_buy_can = pd_data_operate.loc[(pd_data_operate.rdq_0 > decision_time_final) &
+                                              (pd_data_operate.rdq_0 <= decision_time_final_end)].copy()
+        pd_data_buy_can['datatype'], pd_data_buy_can['num'] = 'buy', pd_data_buy_can['num_valid']
+        pd_data_buy_can['marketcap_b'] = pd_data_buy_can['marketcap_0']
+        pd_data_buy_can['rdq_b'] = pd_data_buy_can['rdq_0']
+
+        # prepare the data for the stocks candidates to sell (if any)
+        pd_data_sell_can_pre = pd_data_operate.loc[(pd_data_operate['rdq_0'] <= decision_time_final) &
+                                                   (pd_data_operate['rdq_0'] >= decision_time_sell_can)]
+
+        pd_data_sell_can_list = []
+        for tq in (np.arange(4) + 1)[::-1]:
+            pd_temp = pd_data_sell_can_pre.loc[(pd_data_sell_can_pre[f'rdq_pq{tq}'] >= decision_time_final) &
+                                               (pd_data_sell_can_pre[f'rdq_pq{tq}'] <= decision_time_final_end)].copy()
+            # num represents the number of quarters from last data available data to current decision time period
+            pd_temp['num'] = tq / 4
+            pd_temp['marketcap_s'], pd_temp['rdq_s'] = pd_temp[f'marketcap_pq{tq}'], pd_temp[f'rdq_pq{tq}']
+            pd_data_sell_can_list.append(pd_temp)
+        _pd_data_sell_can = pd.concat(pd_data_sell_can_list).copy().sort_values(by=['rdq_0', 'symbol'])
+        _pd_data_sell_can['datatype'] = 'sell'
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'num_valid', 'num', 'marketcap_s', 'rdq_s']
+        _pd_data_sell_can = _pd_data_sell_can[head_keys + [i for i in _pd_data_sell_can.columns if i not in head_keys]]
+        # Get the latest data so that prediction can be more accurate
+        pd_filter = _pd_data_sell_can.groupby('symbol').rdq_0.max().reset_index()
+        pd_data_sell_can_temp = _pd_data_sell_can.merge(pd_filter, on=['symbol', 'rdq_0'], how='inner')
+
+        # Make sure that the prediction period does NOT extend beyond the num_valid (longest extention of meeting growth standard)
+        pd_data_sell_can = pd_data_sell_can_temp.loc[pd_data_sell_can_temp.num <= pd_data_sell_can_temp.num_valid]
+
+        # this data is the ones that stocks need to sell blindly
+        pd_data_sell_blind = pd_data_sell_can_temp.loc[pd_data_sell_can_temp.num > pd_data_sell_can_temp.num_valid].copy()
+        pd_data_sell_blind['datatype'] = 'sell_blind'
+
+
+        pd_data_eval = pd.concat([pd_data_sell_can, pd_data_buy_can]).copy()
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'num_p', 'num_valid', 'num', 'marketcap_b', 'rdq_b']
+        pd_data_eval['num_p'] = pd_data_eval['num']
+        pd_data_eval = pd_data_eval[head_keys + [i for i in pd_data_eval.columns if i not in head_keys]]
+
+        pd_train = prepage_training_data(pd_data_train)
+        pd_train = pd_train.loc[pd_train.num_p >=0.75]
+
+
+        if predict_method.lower() == 'sklearn':
+            dict_transform, regr_list = get_model_sklearn(pd_train, dict_transform)
+        elif predict_method.lower() == 'lstm':
+            dict_transform, regr_list = get_model_lstm(pd_train, dict_transform)
+        else:
+            raise ValueError('predict_method can only be in [lstm, sklearn]')
+
+        log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_data_eval, dict_transform, regr_list)
+        pd_data_eval['log_growth_mc_pred_mean'] = log_grow_pred_mean
+        pd_data_eval['log_growth_mc_pred_median'] = log_grow_pred_median
+        pd_data_eval['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 1.5
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'num_p', 'marketcap_s', 'rdq_s', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_median',
+                     'log_growth_mc_pred_min']
+        pd_data_eval = pd_data_eval[head_keys + [i for i in pd_data_eval.columns if i not in head_keys]]
+
+        pd_train_eval = pd_train.loc[pd_train.rdq_0 >= decision_time_buy_can].copy()
+        log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_train_eval, dict_transform, regr_list)
+        pd_train_eval['log_growth_mc_pred_mean'] = log_grow_pred_mean
+        pd_train_eval['log_growth_mc_pred_median'] = log_grow_pred_median
+        pd_train_eval['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 1.5
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'num_p', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_median',
+                     'log_growth_mc_pred_min']
+        pd_train_eval = pd_train_eval[head_keys + [i for i in pd_train_eval.columns if i not in head_keys]]
+
+
+        eval_metric = dict_transform['eval_metric']
+        rate_depreciation = dict_transform['rate_depreciation']
+        rate_step_switch = dict_transform['rate_step_switch']
+        n_stocks = dict_transform['n_stocks']
+        rate_threshold_sell = dict_transform['rate_threshold_sell']
+        ratio_threshold_buy = dict_transform['ratio_threshold_buy']
+
+        #rate_threshold_buy =
+
+        pd_data_eval_sell = pd_data_eval.loc[pd_data_eval.datatype == 'sell']
+        pd_data_eval_sell_filter = pd_data_eval_sell.groupby('symbol').rdq_s.min().reset_index()
+        pd_data_eval_sell = pd_data_eval_sell.merge(pd_data_eval_sell_filter, on=['symbol', 'rdq_s'], how='inner')
+        pd_data_eval_sell = pd_data_eval_sell.loc[pd_data_eval_sell.symbol.isin(pd_holding.symbol)]
+
+        pd_data_eval_buy = pd_data_eval.loc[(pd_data_eval.datatype == 'buy') & (pd_data_eval.num_valid == 1)]
+
+                                            # (pd_data_eval[eval_metric] > np.log10(1 + rate_depreciation))].copy()
+
+        pd_data_eval_operation = pd.concat([pd_data_eval_buy, pd_data_eval_sell, pd_data_sell_blind])
+        pd_data_eval_operation['rdq_operate'] = pd_data_eval_operation['rdq_s']
+        _ind = pd_data_eval_operation.datatype == 'buy'
+        pd_data_eval_operation.loc[_ind, 'rdq_operate'] = pd_data_eval_operation.loc[_ind, 'rdq_b']
+        head_keys = ['datatype', 'symbol', 'datafqtr', 'rdq_operate', 'rdq_0']
+        pd_data_eval_operation = pd_data_eval_operation[head_keys + [i for i in pd_data_eval_operation.columns if i not in head_keys]]
+        pd_data_eval_operation = pd_data_eval_operation.sort_values(by='rdq_operate')
+        pd_data_eval_operation['rdq_0'] = pd.to_datetime(pd_data_eval_operation['rdq_0'])
+
+        def sell_share(pd_holding, _ind, _pd_entry=None):
+            shares = pd_holding.loc[_ind].iloc[0].shares
+            if type(_pd_entry) is pd.core.series.Series:
+                free_cash_gain = shares * _pd_entry.marketcap_s
+            elif (type(_pd_entry) is str) & (len(_pd_entry) == 10):
+                pd_temp = pd_holding.loc[_ind].copy()
+                pd_temp['rdq_0'] = decision_time_final
+                pd_quote = stock_price.get_marketcap_time(pd_temp, time_col='rdq_0')
+                free_cash_gain = shares * pd_quote.iloc[0].marketcap
+            else:
+                raise KeyError(f'Not able to recognize data type of input {type(_ind)}, value: {_ind} \n'
+                               f'It can only be either pandas.series or str (yyyy-mm-dd)')
+            pd_holding = pd_holding.loc[~_ind].copy()
+            free_cash_current = pd_holding.iloc[0].shares
+            pd_holding.iloc[0] = ['free_cash', free_cash_current + free_cash_gain, None, None, None, None]
+            return pd_holding
+
+        rate_depreciation_log = np.log10(1 + rate_depreciation)
+
+        _cut = 0
+        # make sure the holding stock is sold after
+        for i in range(1, len(pd_holding)):
+            i = i - _cut
+            pd_entry_holding = pd_holding.iloc[i]
+            symbol = pd_entry_holding.symbol
+            if symbol not in pd_data_eval_operation.symbol:
+                rdq_0 = pd_entry_holding.rdq_0
+                rdq_0_adjust = str(rdq_0 + pd.to_timedelta('390 day'))[:10]
+                if rdq_0_adjust < decision_time_final:
+                    _ind = (pd_holding.symbol == symbol) & (pd_holding.rdq_0 == rdq_0)
+                    pd_holding = sell_share(pd_holding, _ind, pd_entry_holding.rdq_pq4)
+                    _cut += 1
+                    print('Sell', len(pd_holding) + 1, symbol, len(pd_holding))
+
+        for i in range(len(pd_data_eval_operation)):
+            free_cash = pd_holding.iloc[0]['shares']
+            pd_entry = pd_data_eval_operation.iloc[i]
+            _operation, _symbol = pd_entry['datatype'], pd_entry['symbol']
+            n_holding = len(pd_holding)
+            if 'sell' in _operation:
+                if _symbol in pd_holding.symbol:
+                    _ind = pd_holding.symbol == _symbol
+                    _bool_sell = False
+                    if str(pd_holding.loc[_ind].iloc[0].rdq_0)[:10] < decision_time_final:
+                        # Need to make sure that the time this stock bought was before this decision period
+                        if _operation == 'sell_blind':
+                            _bool_sell = True
+                        elif _operation == 'sell':
+                            if pd_entry[eval_metric] / pd_entry['num_p'] < (np.log10(1 + rate_threshold_sell)):
+                                _bool_sell = True
+                        else:
+                            raise ValueError(f"Can't recognize the operation {_operation}")
+                    if _bool_sell:
+                        pd_holding = sell_share(pd_holding, _ind, pd_entry)
+                        # print(f'Sell {_symbol}')
+            elif _operation == 'buy':
+                if _symbol not in list(pd_holding.symbol):
+                    eval_metric_value = pd_entry[eval_metric]
+                    eval_metric_threshold = pd_train_eval.loc[pd_train_eval.num_p == pd_entry.num_p][eval_metric].quantile(1 - ratio_threshold_buy)
+                    if eval_metric_value >= eval_metric_threshold:
+                        if free_cash > 0:
+                            # There is free cash, buy anything that's predicted to grow more than depreciation rate
+                            n_spot = n_stocks + 1 - len(pd_holding)
+                            _free_cash = free_cash / n_spot
+                            pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - _free_cash
+                            pd_holding_new = pd.DataFrame({'symbol': [pd_entry.symbol], 'shares': [_free_cash / pd_entry.marketcap_b],
+                                                           'rdq_0': [pd_entry.rdq_0], 'rdq_pq4': [pd_entry.rdq_pq4],
+                                                           'pred': [pd_entry[eval_metric]], 'num_p': [pd_entry.num_p]})
+                            pd_holding = pd.concat([pd_holding, pd_holding_new])
+                            # print(f'Buy {_symbol}')
+                        else:
+                            # No free cash, needs to switch stocks
+                            rdq_0 = pd_entry.rdq_0
+
+                            # Compare the predicted growth
+                            pd_higher_growth = pd_entry[eval_metric] + ((rdq_0 - pd_holding['rdq_0']).dt.days / 365 +
+                                                                        pd_entry.num_p - pd_holding['num_p']) * rate_depreciation_log
+                            # Consider risk of switching
+                            pd_higher_growth = pd_higher_growth - (pd_holding['pred'] + np.log10(1 + rate_step_switch))
+                            if pd_higher_growth.max() > 0:
+                                # There is profit improving opportunity by switching a investment
+                                ind_array = pd_higher_growth == pd_higher_growth.max()
+                                pd_sell = pd_holding.loc[ind_array].copy()
+                                pd_sell['rdq_0'] = rdq_0
+                                pd_quote = stock_price.get_marketcap_time(pd_sell, time_col='rdq_0')
+                                _free_cash = pd_quote.iloc[0].marketcap * pd_sell.iloc[0].shares
+                                _shares = _free_cash / pd_entry.marketcap_b
+                                pd_holding.loc[ind_array] = [pd_entry.symbol, _shares, pd_entry.rdq_0, pd_entry.rdq_pq4,
+                                                             pd_entry[eval_metric], pd_entry.num_p]
+                                # print(f'replace {pd_sell.iloc[0].symbol} with {pd_entry.symbol} on {str(rdq_0)[:10]}')
+            else:
+                raise ValueError('operation has to be either buy, sell, or sell_blind.')
+            if len(pd_holding) != n_holding:
+                print(i, _operation, n_holding, pd_entry.symbol, len(pd_holding))
+        return pd_holding
+
+if __name__ == '__main__':
     predict_method = 'sklearn'
-    dict_revenue_growth_min = {'1': 0.0, '0': 0.1}
-    dict_book_value_growth_min = {'1': 0.0, '0': 0.1}
+    dict_revenue_growth_min = {'1': 0.0, '0': 0.25}
+    dict_book_value_growth_min = {'1': 0.0, '0': 0.25}
     dict_revenue_growth_max = {}
     dict_book_value_growth_max = {}
-    mc_book_ratio = [1, 65]
-    mc_revenue_ratio = [1, 65]
-    decision_time = 2018
-    evaluate_span = 91
-    coeff_fade = 0.8
-    func_shift, func_power, std_adjust = 5, 3, 2
-    aug_size, aug_sigma = 40, 0.2
+    mc_book_ratio = [2.5, 65]
+    mc_revenue_ratio = [2.5, 65]
+    evaluate_span_month = 3
+    coeff_fade = 0.9
+    func_shift, func_power, std_adjust = 3, 3, 2
     features_exempt = ['num', 'num_p']
     eval_metric = 'log_growth_mc_pred_mean'
+    rate_depreciation = 0.1
+    rate_step_switch = 1
+    rate_threshold_sell = -0.5
+    ratio_threshold_buy = 0.25
+    n_stocks = 4
+    n_threads = 1
 
     #################################################
     # sklearn parameters
     lstm_units = 32
     epochs = 100
     #################################################
-    # sklearn parameters
-    n_regr = 30
-    n_estimators_min, n_estimators_max = 100, 150
+    # GB/RF parameters
+    regr_type = 'RF'
+    n_regr = 10
+    aug_size, aug_sigma = 20, 0.1
+    n_estimators_min, n_estimators_max = 500, 650
     learning_rate_min, learning_rate_max = 0.85, 1
+    max_depth = 6
     #################################################
 
     time_shuffle = 'time'
     marketcap_min, n_year_x = 100, 3
-    max_depth, tree_method, predictor = 3, 'gpu_hist', 'gpu_predictor'
-    n_estimators_list = range(n_estimators_min, n_estimators_max, (n_estimators_max - n_estimators_min) // n_regr)
+    tree_method, predictor = 'gpu_hist', 'gpu_predictor'
+    n_estimators_list = np.linspace(40, 70, n_regr).astype(int)
     learning_rates = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
     n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
     learning_rates = list(learning_rates) + list(learning_rates)[::-1]
     _ = min(len(n_estimators_list), len(learning_rates))
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rates[:_]
 
+
     dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
                       'aug_size': aug_size, 'aug_sigma': aug_sigma, 'std_adjust': std_adjust, 'lstm_units': lstm_units,
                       'lstm_epochs': epochs, 'coeff_fade': coeff_fade, 'features_exempt': features_exempt,
                       'n_estimators_list': n_estimators_list, 'learning_rates': learning_rates, 'max_depth': max_depth,
-                      'tree_method': tree_method, 'predictor': predictor, 'eval_metric': eval_metric}
+                      'tree_method': tree_method, 'predictor': predictor, 'eval_metric': eval_metric,
+                      'rate_depreciation': rate_depreciation, 'rate_step_switch': rate_step_switch, 'n_stocks': n_stocks,
+                      'rate_threshold_sell': rate_threshold_sell, 'ratio_threshold_buy': ratio_threshold_buy, 'n_threads': n_threads,
+                      'regr_type': regr_type}
 
     _pd_data = pd_data_ori.copy()
     # Get rid of the data entires should be pre-filtered
@@ -814,6 +1125,10 @@ if 'Training' == 'Training0':
             _rank_array_pool = _rank_array_pool.union(set(dict_rank_array[i]))
         pd_data_entry = _pd_data.loc[_pd_data['rank'].isin(dict_rank_array[i])].copy()
         pd_data_entry['num_valid'] = i / 4
+        # num_valid represents which growing state is the stock is in,
+        # 1 means it meets the standard of full growth last quarter
+        # 0.25 means it has not meet the standard for 3 quarters
+
         if i == 4:
             pd_data_entry['status'] = 'valid'
         else:
@@ -823,141 +1138,36 @@ if 'Training' == 'Training0':
     head_keys = ['symbol', 'datafqtr', 'num_valid']
     pd_data_operate = pd_data_operate[head_keys + [i for i in pd_data_operate.columns if i not in head_keys]]
 
+    pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0': [None], 'rdq_pq4': [None], 'pred': [None], 'num_p': [None]})
 
+    _decision_time_start = '2012-06-01'
+    _decision_time_end = '2021-12-30'
+    _decision_time_start_month = date_month_convertion(_decision_time_start)
+    _decision_time_end_month = date_month_convertion(_decision_time_end)
+    n_period = (_decision_time_end_month - _decision_time_start_month) // evaluate_span_month
 
+    pd_holding_record_list = []
+    time_start = time.time()
+    for i_period in range(n_period):
+        decision_time_start = date_month_convertion(_decision_time_start_month + i_period * evaluate_span_month, False)
+        decision_time_end = date_month_convertion(_decision_time_start_month + (i_period + 1) * evaluate_span_month - 1, True)
+        dict_decision_time = {'start': decision_time_start, 'end': decision_time_end}
+        pd_holding = invest_period_operation(pd_holding, pd_data_operate, dict_decision_time, dict_transform)
 
+        _pd_holding_record = pd_holding.copy()
+        _pd_holding_record['decision_time_end'] = decision_time_end
+        # _pd_holding_record['rdq_0'] = _pd_holding_record['rdq_0'].astype(str).str[:10]
+        _pd_market_cap = stock_price.get_marketcap_time(_pd_holding_record, time_col='decision_time_end')[['symbol', 'marketcap']]
+        _pd_holding_record = _pd_holding_record.merge(_pd_market_cap, on='symbol', how='left')
+        _pd_holding_record['marketcap'] = _pd_holding_record['marketcap'].fillna(1)
+        _pd_holding_record['value'] = _pd_holding_record['shares'] * _pd_holding_record['marketcap']
+        value_total = int(_pd_holding_record.value.sum())
 
+        pd_holding_record_list.append(_pd_holding_record)
+        time_span = round(time.time() - time_start, 1)
+        print(f'{time_span} s - completed investing in {decision_time_start} - {i_period + 1}/{n_period} - value {value_total}')
 
-def prepare_data_time(pd_data_operate, decision_time, dict_transform):
+    pd_holding_record = pd.concat(pd_holding_record_list)
 
-    decision_time_final = convert_decision_time(decision_time)
-    decision_time_final_end = str(pd.to_datetime(decision_time_final) + pd.to_timedelta(f'{evaluate_span} days'))[:10]
-    decision_time_sell_can = str(pd.to_datetime(decision_time_final) - pd.to_timedelta(f'390 days'))[:10]
-
-    pd_data_train_pre = pd_data_operate.loc[(pd_data_operate.rdq_0 <= decision_time_final) & (pd_data_operate['rdq_0'] <= decision_time_final)]
-
-    # prepare the data for the training data
-    pd_data_train_list = []
-    for tq in (np.arange(4) + 1)[::-1]:
-        if tq == 4:
-            pd_temp = pd_data_train_pre.loc[pd_data_train_pre[f'rdq_pq{tq}'] <= decision_time_final].copy()
-        else:
-            pd_temp = pd_data_train_pre.loc[((pd_data_train_pre[f'rdq_pq{tq + 1}'] >= decision_time_final) |
-                                             pd_data_train_pre[f'rdq_pq{tq + 1}'].isna()) &
-                                            (pd_data_train_pre[f'rdq_pq{tq}'] < decision_time_final)].copy()
-        pd_temp['num'] = tq / 4
-        pd_temp['marketcap_p'], pd_temp['rdq_p'] = pd_temp[f'marketcap_pq{tq}'], pd_temp[f'rdq_pq{tq}']
-        pd_data_train_list.append(pd_temp)
-    pd_data_train = pd.concat(pd_data_train_list).sort_values(by=['rdq_0', 'symbol'])
-    pd_data_train['datatype'] = 'train'
-    head_keys = ['datatype', 'symbol', 'datafqtr', 'num_valid', 'num', 'marketcap_p', 'rdq_p']
-    pd_data_train = pd_data_train[head_keys + [i for i in pd_data_train.columns if i not in head_keys]]
-
-    # prepare the data for the stocks candidates to buy
-    pd_data_buy_can = pd_data_operate.loc[(pd_data_operate.rdq_0 > decision_time_final) &
-                                          (pd_data_operate.rdq_0 <= decision_time_final_end) &
-                                          (pd_data_operate.status == 'valid')].copy()
-    pd_data_buy_can['datatype'], pd_data_buy_can['num'] = 'buy', 0.25
-    pd_data_buy_can['marketcap_b'] = pd_data_buy_can['marketcap_0']
-    pd_data_buy_can['rdq_b'] = pd_data_buy_can['rdq_0']
-
-    # prepare the data for the stocks candidates to sell (if any)
-    pd_data_sell_can_pre = pd_data_operate.loc[(pd_data_operate['rdq_0'] <= decision_time_final) &
-                                               (pd_data_operate['rdq_0'] >= decision_time_sell_can)]
-
-    pd_data_sell_can_list = []
-    for tq in (np.arange(4) + 1)[::-1]:
-        pd_temp = pd_data_sell_can_pre.loc[(pd_data_sell_can_pre[f'rdq_pq{tq}'] >= decision_time_final) &
-                                           (pd_data_sell_can_pre[f'rdq_pq{tq}'] <= decision_time_final_end)].copy()
-        pd_temp['num'] = tq / 4
-        pd_temp['marketcap_s'], pd_temp['rdq_s'] = pd_temp[f'marketcap_pq{tq}'], pd_temp[f'rdq_pq{tq}']
-        pd_data_sell_can_list.append(pd_temp)
-    _pd_data_sell_can = pd.concat(pd_data_sell_can_list).copy().sort_values(by=['rdq_0', 'symbol'])
-    _pd_data_sell_can['datatype'] = 'sell'
-    head_keys = ['datatype', 'symbol', 'datafqtr', 'num_valid', 'num', 'marketcap_s', 'rdq_s']
-    _pd_data_sell_can = _pd_data_sell_can[head_keys + [i for i in _pd_data_sell_can.columns if i not in head_keys]]
-    pd_filter = _pd_data_sell_can.groupby('symbol').rdq_0.max().reset_index()
-    pd_data_sell_can = _pd_data_sell_can.merge(pd_filter, on=['symbol', 'rdq_0'], how='inner')
-
-
-
-    pd_data_eval = pd.concat([pd_data_sell_can, pd_data_buy_can]).copy()
-    head_keys = ['datatype', 'symbol', 'datafqtr', 'num_p', 'num_valid', 'num', 'marketcap_b', 'rdq_b']
-    pd_data_eval['num_p'] = pd_data_eval['num']
-    pd_data_eval = pd_data_eval[head_keys + [i for i in pd_data_eval.columns if i not in head_keys]]
-
-    pd_train = prepage_training_data(pd_data_train)
-
-
-    if predict_method.lower() == 'sklearn':
-        dict_transform, regr_list = get_model_sklearn(pd_train, dict_transform)
-    elif predict_method.lower() == 'lstm':
-        dict_transform, regr_list = get_model_lstm(pd_train, dict_transform)
-    else:
-        raise ValueError('predict_method can only be in [lstm, sklearn]')
-
-    log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_data_eval, dict_transform, regr_list)
-
-    pd_data_eval['log_growth_mc_pred_mean'] = log_grow_pred_mean
-    pd_data_eval['log_growth_mc_pred_median'] = log_grow_pred_median
-    pd_data_eval['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * 1.5
-    head_keys = ['datatype', 'symbol', 'datafqtr', 'num_p', 'marketcap_s', 'rdq_s', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_median',
-                 'log_growth_mc_pred_min']
-    pd_data_eval = pd_data_eval[head_keys + [i for i in pd_data_eval.columns if i not in head_keys]]
-
-    pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0': [None], 'pred': [None], 'num_p': [None]})
-
-    eval_metric = dict_transform['eval_metric']
-
-    rate_depreciation = 0.12
-    rate_step_switch = 0.05
-    n_stocks = 7
-
-    pd_data_eval_sell = pd_data_eval.loc[pd_data_eval.datatype == 'sell']
-    pd_data_eval_sell_filter = pd_data_eval_sell.groupby('symbol').rdq_s.min().reset_index()
-    pd_data_eval_sell = pd_data_eval_sell.merge(pd_data_eval_sell_filter, on=['symbol', 'rdq_s'], how='inner')
-    pd_data_eval_buy = pd_data_eval.loc[(pd_data_eval.datatype == 'buy') &
-                                        (pd_data_eval[eval_metric] > np.log10(1 + rate_depreciation) / 4)].copy()
-    pd_data_eval_buy['rdq_0'] = pd.to_datetime(pd_data_eval_buy['rdq_0'])
-
-
-
-    symbols = list(pd_data_eval['symbol'])
-    rdqs = list(pd_data_eval_buy['rdq_b'].unique()) + list(pd_data_eval_sell['rdq_s'].unique())
-
-    # pd_marketcap_info = stock_price.get_marketcap_time()
-
-
-    pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0': [None], 'pred': [None], 'num_p': [None]})
-
-    rate_depreciation_log = np.log10(1 + rate_depreciation)
-    for i in range(len(pd_data_eval_buy)):
-        free_cash = pd_holding.iloc[0]['shares']
-        pd_entry = pd_data_eval_buy.iloc[i]
-        if free_cash > 0:
-            # There is free cash, buy anything that's predicted to grow more than depreciation rate
-            n_spot = n_stocks + 1 - len(pd_holding)
-            _free_cash = free_cash / n_spot
-            pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - _free_cash
-            pd_holding_new = pd.DataFrame({'symbol': [pd_entry.symbol], 'shares': [_free_cash / pd_entry.marketcap_b],
-                                           'rdq_0': [pd_entry.rdq_0], 'pred': [pd_entry[eval_metric]],
-                                           'num_p': [pd_entry.num_p]})
-            pd_holding = pd.concat([pd_holding, pd_holding_new])
-        else:
-            # No free cash, needs to switch stocks
-            rdq_0 = pd_entry.rdq_0
-
-            # Compare the predicted growth
-            pd_higher_growth = pd_entry[eval_metric] + ((rdq_0 - pd_holding['rdq_0']).dt.days / 365 +
-                                                        pd_entry.num_p - pd_holding['num_p']) * rate_depreciation_log
-            # Consider risk of switching
-            pd_higher_growth = pd_higher_growth - (pd_holding['pred'] + np.log10(1 + rate_step_switch))
-            if pd_higher_growth.max() > 0:
-                ind_array = pd_higher_growth == pd_higher_growth.max()
-                pd_sell = pd_holding.loc[ind_array].copy()
-                pd_sell['rdq_0'] = rdq_0
-                pd_quote = stock_price.get_marketcap_time(pd_sell, time_col='rdq_0')
-                _free_cash = pd_quote.iloc[0].marketcap * pd_sell.iloc[0].shares
-                _shares = _free_cash / pd_entry.marketcap_b
-                pd_holding.loc[ind_array] = [pd_entry.symbol, _shares, pd_entry.rdq_0, pd_entry[eval_metric], pd_entry.num_p]
-                print(f'replace {pd_sell.iloc[0].symbol} with {pd_entry.symbol} on {str(rdq_0)[:10]}')
+    comp_growth_rate = round((10 ** (np.log10(value_total / 10000) / (len(pd_holding_record_list)/4)) - 1) * 100, 2)
+    print(f'Final compounded annual growth rate {comp_growth_rate}%')

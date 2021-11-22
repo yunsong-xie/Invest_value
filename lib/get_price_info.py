@@ -19,9 +19,9 @@ from matplotlib import pyplot as plt
 from selenium import webdriver
 from lib import misc
 
-pd.set_option('display.max_column', 15)
-pd.set_option('display.max_colwidth', 100)
-pd.set_option('display.width', 1000)
+pd.set_option('display.max_column', 75)
+pd.set_option('display.max_colwidth', 2400)
+pd.set_option('display.width', 25000)
 DIR = os.path.dirname(os.path.abspath(__file__))
 DIR_MAIN = os.path.dirname(DIR)
 
@@ -1105,17 +1105,50 @@ class StockPrice(StockEarning):
 
         if avg is None:
             command = f"""with filter as (
-                                        select t1.symbol, t1.time as time_request, min(t2.time) as time 
-                                        from buff t1, price t2
-                                        where t1.symbol = t2.symbol
-                                        and t2.time >= t1.time
-                                        group by t1.symbol, t1.time
-                                    )
-                                    select t1.*, t2.close, t2.adjclose from 
-                                    filter t1 inner join price t2 
-                                    on t1.time = t2.time
-                                    and t1.symbol = t2.symbol
-                                    """
+                                select t1.symbol, t1.time as time_request, min(t2.time) as time 
+                                from buff t1, price t2
+                                where t1.symbol = t2.symbol
+                                and t2.time >= t1.time
+                                group by t1.symbol, t1.time
+                            ), 
+                            future as (    
+                                select t1.*, t2.close, t2.adjclose from 
+                                filter t1 left join price t2 
+                                on t1.time = t2.time
+                                and t1.symbol = t2.symbol
+                            ),
+                            future_left_raw as (
+                                select t1.time as time_request_ori, t1.symbol, t2.time_request, t2.time, t2.close, t2.adjclose
+                                from buff t1 left join future t2
+                                on t1.time = t2.time_request
+                                and t1.symbol = t2.symbol
+                            ), 
+                            future_left as (
+                                select t1.symbol, t1.time_request_ori as time
+                                from future_left_raw t1 
+                                where t1.adjclose is NULL
+                            ),  
+                            filter_1 as (
+                                select t1.symbol, t1.time as time_request, max(t2.time) as time 
+                                from future_left t1, price t2
+                                where t1.symbol = t2.symbol
+                                and t2.time < t1.time
+                                group by t1.symbol, t1.time 
+                            ), 
+                            past as (
+                                select t1.*, t2.close, t2.adjclose  
+                                from filter_1 t1 left join price t2 
+                                on t1.time = t2.time
+                                and t1.symbol = t2.symbol
+                            ), 
+                            complete as (
+                                select * from past
+                                union
+                                select * from future
+                            )
+                            select * from complete
+                            
+                            """
         else:
             if type(avg) is list:
                 if len(avg) == 1:
