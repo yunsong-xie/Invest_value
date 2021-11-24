@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;&#10;6. rewrite sell_blind option">
+      <change afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
@@ -72,14 +73,14 @@
       <recent name="D:\PycharmProjects\Invest_value\capitalIQ" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton\result" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\static\csv\stock_list" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\obsolete" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton" />
       <recent name="D:\PycharmProjects\Investment\Invest_value" />
-      <recent name="D:\PycharmProjects\Investment\Invest_value\lib" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.Analyze_Wharton_8">
+  <component name="RunManager" selected="Python.Analyze_Wharton_9">
     <configuration name="Analyze_Wharton_8" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -90,6 +91,24 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Analyze_Wharton_9" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -120,36 +139,12 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/test.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_price" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Invest_value" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/update_price.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -181,11 +176,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.Analyze_Wharton_9" />
+        <item itemvalue="Python.test" />
         <item itemvalue="Python.Analyze_Wharton_8" />
         <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.upload_report" />
-        <item itemvalue="Python.update_price" />
-        <item itemvalue="Python.test" />
       </list>
     </recent_temporary>
   </component>
@@ -488,7 +483,14 @@
       <option name="project" value="LOCAL" />
       <updated>1637214692479</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info.">
+      <created>1637616195645</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1637616195645</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -504,7 +506,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Revert &quot;Revert &quot;2021-07-11&quot;&quot;&#10;&#10;This reverts commit fe6e54cf" />
     <MESSAGE value="2021-07-11 init" />
     <MESSAGE value="test csv file" />
     <MESSAGE value="Test more files in static folder" />
@@ -529,6 +530,7 @@
     <MESSAGE value="V7 is the last version that all the future quarter section financial data is preserved.&#10;in V8, future quarter only include time info" />
     <MESSAGE value="In V8, investing simulation is focused. For each investing section data sets are seperated into three:&#10;1. Training - all data for training and labeling do not violate time info constrain.&#10;2. Buying candidates - the stocks that have option to considering buying&#10;3. Selling candidates - the stocks that have option to considering selling, if any&#10;&#10;Time information constrain is the heavy focus in this version. Also number of the quarter of each entries is also included." />
     <MESSAGE value="Update on V8&#10;Worked the framework of monte carlo simulation. &#10;Still pending on design the stock buying/selling strategy." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update on V8&#10;Worked the framework of monte carlo simulation. &#10;Still pending on design the stock buying/selling strategy." />
+    <MESSAGE value="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info." />
+    <option name="LAST_COMMIT_MESSAGE" value="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info." />
   </component>
 </project>

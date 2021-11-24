@@ -15,6 +15,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import multiprocessing as mp
+import pickle
 
 
 pd.set_option('display.max_column', 75)
@@ -389,7 +390,7 @@ if __name__ == '__main__0':
         pd_rdq_list.append(pd_data_raw[['symbol', rdq]].rename(columns={rdq: 'rdq'}))
     pd_rdq = pd.concat(pd_rdq_list).drop_duplicates().dropna().sort_values(by=['symbol', 'rdq'])
 
-    _pd_marketcap_report = stock_price.get_marketcap_time(pd_rdq, time_col='rdq', avg=14)
+    _pd_marketcap_report = stock_price.get_marketcap_time(pd_rdq, time_col='rdq', avg=1)
 
     pd_data = pd_data_raw.copy()
     print('\rCompleted market report data pull')
@@ -604,11 +605,12 @@ if 'Define Function' == 'Define Function':
 
         pd_mdata, features_x = prepare_features(pd_data, dict_transform, data_type='training')
 
-        features_bvr_year = ['cur_asset', 'cash_flow', 'revenue', 'profit']
+        features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_growth = ['book_value', 'revenue']
         features_x_select = ['mc_bv_0', 'mc_bv_1', 'num_p']
 
-        features_bvr_year = ['cur_asset', 'cash_flow', 'revenue', 'profit']
+        features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
+        features_bvr_quarter = []
         features_growth = ['book_value', 'revenue']
         features_x_select = ['num_p', 'mc_bv_0']
         features_growth_time_label = ['year']
@@ -622,6 +624,11 @@ if 'Define Function' == 'Define Function':
                 features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q' in i) & ('1' in i)]
         for _ in features_bvr_year:
             features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & (('0' in i) | ('0' in i))]
+        for _ in features_bvr_quarter:
+            features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & ('q' in i) & ('1' in i)]
+
+
+
         for feature in features_x:
             if feature in dict_transform['features_exempt']:
                 dict_transform['mean'][feature] = 0
@@ -839,7 +846,8 @@ if 'Define Function' == 'Define Function':
         eval_metric, rate_depreciation = dict_transform['eval_metric'], dict_transform['rate_depreciation']
         rate_step_switch, n_stocks = dict_transform['rate_step_switch'], dict_transform['n_stocks']
         rate_threshold_sell, ratio_threshold_buy = dict_transform['rate_threshold_sell'], dict_transform['ratio_threshold_buy']
-        ratio_overhead, margin_interest = dict_transform['ratio_overhead'], dict_transform['margin_interest']
+        ratio_margin, margin_interest = dict_transform['ratio_margin'], dict_transform['margin_interest']
+        evaluate_span_month = dict_transform['evaluate_span_month']
 
         if 'prepare_data' == 'prepare_data':
 
@@ -899,7 +907,7 @@ if 'Define Function' == 'Define Function':
             pd_data_eval = pd_data_eval[head_keys + [i for i in pd_data_eval.columns if i not in head_keys]]
 
             pd_train = prepage_training_data(pd_data_train)
-            pd_train = pd_train.loc[pd_train.num_p >=0.75]
+            pd_train = pd_train.loc[pd_train.num_p >= 0.75]
 
         if 'prediction' == 'prediction':
             if predict_method.lower() == 'sklearn':
@@ -938,11 +946,12 @@ if 'Define Function' == 'Define Function':
             pd_data_eval_buy = pd_data_eval.loc[(pd_data_eval.datatype == 'buy') & (pd_data_eval.num_valid == 1)]
             pd_data_eval_list.append(pd_data_eval_buy)
 
+            # Add blind sell entries based on holding timeline
             pd_sell_blind = pd_holding.iloc[1:][['symbol', 'rdq_0']].copy()
-            pd_sell_blind['rdq_s'] = (pd_sell_blind['rdq_0'] + pd.to_timedelta('365 day')).astype(str).str[:10]
+            pd_sell_blind['rdq_s'] = (pd_sell_blind['rdq_0'] + pd.to_timedelta('366 day')).astype(str).str[:10]
             pd_sell_blind = pd_sell_blind.loc[pd_sell_blind.rdq_s <= decision_time_final_end]
             pd_sell_blind['datatype'] = 'sell_blind'
-            # pd_data_eval_list.append(pd_sell_blind)
+            pd_data_eval_list.append(pd_sell_blind)
 
             pd_data_eval_operation = pd.concat(pd_data_eval_list)
 
@@ -954,12 +963,14 @@ if 'Define Function' == 'Define Function':
             pd_data_eval_operation = pd_data_eval_operation.sort_values(by='rdq_operate')
             pd_data_eval_operation['rdq_0'] = pd.to_datetime(pd_data_eval_operation['rdq_0'])
 
-        def sell_share(pd_holding, _ind, rdq_s=None):
+        def sell_share(pd_holding, _ind, rdq_s):
             shares = pd_holding.loc[_ind].iloc[0].shares
             if 'pandas' in str(type(rdq_s)):
                 sell_date = rdq_s
-            else:
+            elif (type(rdq_s) is str) & (len(str(rdq_s)) == 10):
                 sell_date = str(rdq_s)[:10]
+            else:
+                raise ValueError(f'Selling data value error, got input {rdq_s}')
             pd_temp = pd_holding.loc[_ind].copy()
             pd_temp['rdq_0'] = sell_date
             pd_quote = stock_price.get_marketcap_time(pd_temp, time_col='rdq_0')
@@ -970,26 +981,41 @@ if 'Define Function' == 'Define Function':
             pd_holding.iloc[0] = ['free_cash', free_cash_current + free_cash_gain, None, None, None, None, None]
             return pd_holding
 
-        def buy_share(pd_holding, symbol, time_buy):
-            a = 1
+        def buy_share(pd_holding, pd_entry):
+
+            pd_holding_output = pd_holding.copy()
+            symbol = pd_entry.symbol
+            if symbol in list(pd_holding.symbol):
+                ind_array = pd_holding_output.symbol == _symbol
+                rdq_0_1st, _shares = pd_holding_output.loc[ind_array].iloc[0][['rdq_0_1st', 'shares']]
+                pd_holding_output.loc[ind_array] = [pd_entry.symbol, _shares, rdq_0_1st, pd_entry.rdq_0, pd_entry.rdq_pq4,
+                                                    pd_entry[eval_metric], pd_entry.num_p]
+            else:
+                free_cash = pd_holding.iloc[0].shares
+                rdq_0 = pd_entry.rdq_0
+                pd_value_cal = get_holding_value(pd_holding, rdq_0, bool_keep=False)
+                _value_total = pd_value_cal.value.sum()
+                _value_mean = _value_total / n_stocks
+                if free_cash > _value_mean:
+                    if len(pd_holding) == n_stocks:
+                        _free_cash_buy = free_cash
+                    else:
+                        _free_cash_buy = _value_mean
+                else:
+                    _margin = _value_total * ratio_margin
+                    if free_cash > -_margin:
+                        _free_cash_buy = min(free_cash + _margin, _value_mean)
+                    else:
+                        _free_cash_buy = 0
+                if _free_cash_buy > 0:
+                    pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - _free_cash_buy
+                    pd_holding_new = pd.DataFrame({'symbol': [pd_entry.symbol], 'shares': [_free_cash_buy / pd_entry.marketcap_b],
+                                                   'rdq_0_1st': [rdq_0], 'rdq_0': [rdq_0], 'rdq_pq4': [pd_entry['rdq_pq4']],
+                                                   'pred': [pd_entry[eval_metric]], 'num_p': [pd_entry['num_p']]})
+                    pd_holding_output = pd.concat([pd_holding, pd_holding_new])
+            return pd_holding_output
 
         rate_depreciation_log = np.log10(1 + rate_depreciation)
-
-        _cut = 0
-        # make sure the holding stock is sold after > 390 days after rdq_0
-        for i in range(1, len(pd_holding)):
-            i = i - _cut
-            pd_entry_holding = pd_holding.iloc[i]
-            symbol = pd_entry_holding.symbol
-            if symbol not in pd_data_eval_operation.symbol:
-                rdq_0 = pd_entry_holding.rdq_0
-                rdq_0_adjust = str(rdq_0 + pd.to_timedelta('390 day'))[:10]
-                rdq_s = pd.to_datetime(pd_entry_holding.rdq_0) + pd.to_timedelta('365 day')
-                if rdq_0_adjust < decision_time_final:
-                    _ind = (pd_holding.symbol == symbol) & (pd_holding.rdq_0 == rdq_0)
-                    pd_holding = sell_share(pd_holding, _ind, rdq_s)
-                    _cut += 1
-                    print('Sell', len(pd_holding) + 1, symbol, len(pd_holding))
 
         for i in range(len(pd_data_eval_operation)):
             free_cash = pd_holding.iloc[0]['shares']
@@ -998,7 +1024,7 @@ if 'Define Function' == 'Define Function':
             n_holding = len(pd_holding)
 
             if 'sell' in _operation:
-                if _symbol in pd_holding.symbol:
+                if _symbol in list(pd_holding.symbol):
                     _ind = pd_holding.symbol == _symbol
                     _bool_sell = False
                     if str(pd_holding.loc[_ind].iloc[0].rdq_0)[:10] < decision_time_final:
@@ -1008,35 +1034,21 @@ if 'Define Function' == 'Define Function':
                         elif _operation == 'sell':
                             if pd_entry[eval_metric] / pd_entry['num_p'] < (np.log10(1 + rate_threshold_sell)):
                                 _bool_sell = True
-                        else:
-                            raise ValueError(f"Can't recognize the operation {_operation}")
                     if _bool_sell:
-                        pd_holding = sell_share(pd_holding, _ind, pd_entry)
-                        # print(f'Sell {_symbol}')
+                        pd_holding = sell_share(pd_holding, _ind, pd_entry.rdq_s)
             elif _operation == 'buy':
                 eval_metric_value = pd_entry[eval_metric]
                 eval_metric_threshold = pd_train_eval.loc[pd_train_eval.num_p == pd_entry.num_p][eval_metric].quantile(1 - ratio_threshold_buy)
+                _bool_buy = False
                 if eval_metric_value >= eval_metric_threshold:
                     if _symbol in list(pd_holding.symbol):
                         # Update the latest prediction result
-                        ind_array = pd_holding.symbol == _symbol
-                        rdq_0_1st, _shares = pd_holding.loc[ind_array].iloc[0][['rdq_0_1st', 'shares']]
-                        pd_holding.loc[ind_array] = [pd_entry.symbol, _shares, rdq_0_1st, pd_entry.rdq_0, pd_entry.rdq_pq4,
-                                                     pd_entry[eval_metric], pd_entry.num_p]
-                    elif free_cash > 0:
+                        _bool_buy = True
+                    elif n_holding < (n_stocks + 1):
                         # There is free cash, buy anything that's predicted to grow more than depreciation rate
-                        rdq_0 = pd_entry.rdq_0
-                        n_spot = n_stocks + 1 - len(pd_holding)
-                        pd_value_cal = get_holding_value(pd_holding, rdq_0, bool_keep=False)
-                        _value_total = pd_value_cal.value.sum()
-                        _free_cash_buy_1 = _value_total / n_spot
-                        _free_cash_buy_2 = max(free_cash + _value_total * ratio_overhead, _free_cash_buy_1)
-                        pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - _free_cash_buy_2
-                        pd_holding_new = pd.DataFrame({'symbol': [pd_entry.symbol], 'shares': [_free_cash_buy_2 / pd_entry.marketcap_b],
-                                                       'rdq_0_1st': [rdq_0],  'rdq_0': [rdq_0], 'rdq_pq4': [pd_entry['rdq_pq4']],
-                                                       'pred': [pd_entry[eval_metric]], 'num_p': [pd_entry['num_p']]})
-                        pd_holding = pd.concat([pd_holding, pd_holding_new])
-                        # print(f'Buy {_symbol}')
+                        if free_cash > 0:
+                            _bool_buy = True
+                            # print(f'Buy {_symbol}')
                     else:
                         # No free cash, and the symbol is not on the holding list needs to swap stocks
                         # But only swap the stock that was bought on the current period
@@ -1050,46 +1062,48 @@ if 'Define Function' == 'Define Function':
                             _depreciation = ((pd_entry.rdq_0 - _rdq_0_hold).days / 365 + pd_entry.num_p - num_p_hold) * rate_depreciation_log
                             _growth_entry = 10 ** pd_entry[eval_metric]
                             _growth_hold = 10 ** _pred_min_hold * (1 + rate_step_switch) * (1 - _depreciation)
-
                             if _growth_entry > _growth_hold:
-                                # There is profit improving opportunity by switching a investment
-                                ind_array = pd_holding.symbol == _symbol_hold
-                                _pd_sell = pd_holding.loc[ind_array].copy()
-                                _pd_sell['rdq_0'] = pd_entry['rdq_0']
-                                pd_quote = stock_price.get_marketcap_time(_pd_sell, time_col='rdq_0')
-                                _free_cash = pd_quote.iloc[0]['marketcap'] * _pd_sell.iloc[0]['shares']
-                                _shares = _free_cash / pd_entry.marketcap_b
-                                pd_holding.loc[ind_array] = [pd_entry['symbol'], _shares, pd_entry['rdq_0'], pd_entry['rdq_0'],
-                                                             pd_entry['rdq_pq4'], pd_entry[eval_metric], pd_entry['num_p']]
-                                #print(f'replace {_symbol_hold} with {pd_entry.symbol} on {str(rdq_0)[:10]}')
                                 _operation = 'replace'
-            else:
-                raise ValueError('operation has to be either buy, sell, or sell_blind.')
-            if len(pd_holding) != n_holding:
+                                _ind = pd_holding.symbol == _symbol_hold
+                                pd_holding = sell_share(pd_holding, _ind, pd_entry.rdq_0)
+                                _bool_buy = True
+                if _bool_buy:
+                    pd_holding = buy_share(pd_holding, pd_entry)
+                    _ind = (pd_data_eval_operation.datatype == 'sell_blind') & (pd_data_eval_operation.symbol == _symbol)
+                    pd_data_eval_operation.loc[_ind, 'datatype'] = 'sell_blind_cancelled'
+
+            if (len(pd_holding) != n_holding) | (_operation == 'replace'):
                 print(i, _operation, n_holding, pd_entry.symbol, len(pd_holding))
+
+        if pd_holding.iloc[0].shares < 0:
+            _ind = pd_holding.symbol == 'free_cash'
+            _margin = pd_holding.iloc[0].shares
+            pd_holding.loc[_ind, 'shares'] = _margin * (1 + margin_interest / 12 * evaluate_span_month)
+
         return pd_holding
 
 if __name__ == '__main__':
     predict_method = 'sklearn'
-    dict_revenue_growth_min = {'1': 0.0, '0': 0.2}
-    dict_book_value_growth_min = {'1': 0.0, '0': 0.2}
+    dict_revenue_growth_min = {'1': 0.0, '0': 0.3}
+    dict_book_value_growth_min = {'1': 0.0, '0': 0.3}
     dict_revenue_growth_max = {}
     dict_book_value_growth_max = {}
     mc_book_ratio = [2.5, 65]
     mc_revenue_ratio = [2.5, 65]
     evaluate_span_month = 3
     coeff_fade = 0.9
-    func_shift, func_power, std_adjust = 3, 3, 2
+    func_shift, func_power, std_adjust = 2, 2, 2
     features_exempt = ['num', 'num_p']
-    eval_metric = 'log_growth_mc_pred_mean'
+    eval_metric = 'log_growth_mc_pred_median'
     rate_depreciation = 0.2
     rate_step_switch = 0
     rate_threshold_sell = -0.5
-    ratio_threshold_buy = 0.25
-    ratio_overhead = 0.1
+    ratio_threshold_buy = 0.35
+    ratio_margin = 0.1
     n_stocks = 4
     n_threads = 1
-    _decision_time_start, _decision_time_end = '2007-01-01', '2021-12-30'
+    _decision_time_start, _decision_time_end = '2005-01-01', '2021-12-30'
+    n_trials = 10
 
     #################################################
     # sklearn parameters
@@ -1100,7 +1114,7 @@ if __name__ == '__main__':
     regr_type = 'RF'
     n_regr = 10
     aug_size, aug_sigma = 20, 0.1
-    n_estimators_min, n_estimators_max = 400, 500
+    n_estimators_min, n_estimators_max = 400, 450
     learning_rate_min, learning_rate_max = 0.85, 1
     max_depth = 5
     booster, subsample = 'gbtree', 0.85
@@ -1117,7 +1131,6 @@ if __name__ == '__main__':
     _ = min(len(n_estimators_list), len(learning_rates))
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rates[:_]
 
-
     dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
                       'aug_size': aug_size, 'aug_sigma': aug_sigma, 'std_adjust': std_adjust, 'lstm_units': lstm_units,
                       'lstm_epochs': epochs, 'coeff_fade': coeff_fade, 'features_exempt': features_exempt,
@@ -1125,20 +1138,23 @@ if __name__ == '__main__':
                       'tree_method': tree_method, 'predictor': predictor, 'eval_metric': eval_metric,
                       'rate_depreciation': rate_depreciation, 'rate_step_switch': rate_step_switch, 'n_stocks': n_stocks,
                       'rate_threshold_sell': rate_threshold_sell, 'ratio_threshold_buy': ratio_threshold_buy, 'n_threads': n_threads,
-                      'regr_type': regr_type, 'booster': booster, 'subsample': subsample, 'ratio_overhead': ratio_overhead,
-                      'margin_interest': margin_interest}
+                      'regr_type': regr_type, 'booster': booster, 'subsample': subsample, 'ratio_margin': ratio_margin,
+                      'margin_interest': margin_interest, 'evaluate_span_month': evaluate_span_month,
+                      'decision_time_start': _decision_time_start, 'decision_time_end': _decision_time_end,
+                      'dict_revenue_growth_min': dict_revenue_growth_min, 'dict_book_value_growth_min': dict_book_value_growth_min,
+                      'mc_book_ratio': mc_book_ratio, 'mc_revenue_ratio': mc_revenue_ratio}
 
     _pd_data = pd_data_ori.copy()
     # Get rid of the data entires should be pre-filtered
     _pd_data = _pd_data.loc[~((_pd_data.marketcap_pq4.isna()) & (_pd_data.rdq_0 < common_func.date(-400)))]
     pd_base = _pd_data
     for i_year in np.arange(4) + 1:
-        ind_large = pd_base[f'marketcap_pq{i_year}'] / pd_base[f'marketcap_0'] > 6.7
-        ind_small = pd_base[f'marketcap_pq{i_year}'] / pd_base[f'marketcap_0'] < 0.15
+        ind_large = pd_base[f'marketcap_pq{i_year}'] / pd_base[f'marketcap_0'] > 100
+        ind_small = pd_base[f'marketcap_pq{i_year}'] / pd_base[f'marketcap_0'] < 0.01
         if any(ind_large):
-            pd_base.loc[ind_large, f'marketcap_pq{i_year}'] = pd_base.loc[ind_large][f'marketcap_0'] * 6.7
+            pd_base.loc[ind_large, f'marketcap_pq{i_year}'] = pd_base.loc[ind_large][f'marketcap_0'] * 100
         if any(ind_small):
-            pd_base.loc[ind_small, f'marketcap_pq{i_year}'] = pd_base.loc[ind_small][f'marketcap_0'] * 0.15
+            pd_base.loc[ind_small, f'marketcap_pq{i_year}'] = pd_base.loc[ind_small][f'marketcap_0'] * 0.01
 
     for i in dict_revenue_growth_min:
         pd_base = pd_base.loc[(pd_base[f'revenue_{i}'] / pd_base[f'revenue_{int(i) + 1}']) > (1 + dict_revenue_growth_min[i])]
@@ -1180,8 +1196,6 @@ if __name__ == '__main__':
     head_keys = ['symbol', 'datafqtr', 'num_valid']
     pd_data_operate = pd_data_operate[head_keys + [i for i in pd_data_operate.columns if i not in head_keys]]
 
-    pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None],
-                               'rdq_0': [None], 'rdq_pq4': [None], 'pred': [None], 'num_p': [None]})
     pd_holding_fr = None
 
     _decision_time_start_month = date_month_convertion(_decision_time_start)
@@ -1189,21 +1203,47 @@ if __name__ == '__main__':
     n_period = (_decision_time_end_month - _decision_time_start_month) // evaluate_span_month
 
     pd_holding_record_list = []
-    time_start = time.time()
-    for i_period in range(n_period + 1):
-        decision_time_start = date_month_convertion(_decision_time_start_month + i_period * evaluate_span_month, False)
-        decision_time_end = date_month_convertion(_decision_time_start_month + (i_period + 1) * evaluate_span_month - 1, True)
-        dict_decision_time = {'start': decision_time_start, 'end': decision_time_end}
-        pd_holding = invest_period_operation(pd_holding, pd_data_operate, dict_decision_time, dict_transform)
+    for i_trial in range(n_trials):
+        pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None],
+                                   'rdq_0': [None], 'rdq_pq4': [None], 'pred': [None], 'num_p': [None]})
+        pd_holding_record_trial_list = []
+        time_start = time.time()
+        value_total = None
+        for i_period in range(n_period + 1):
+            decision_time_start = date_month_convertion(_decision_time_start_month + i_period * evaluate_span_month, False)
+            decision_time_end = date_month_convertion(_decision_time_start_month + (i_period + 1) * evaluate_span_month - 1, True)
+            dict_decision_time = {'start': decision_time_start, 'end': decision_time_end}
+            pd_holding = invest_period_operation(pd_holding, pd_data_operate, dict_decision_time, dict_transform)
 
-        _pd_holding_record = get_holding_value(pd_holding, decision_time_end, bool_keep=True)
-        value_total = int(_pd_holding_record.value.sum())
+            _pd_holding_record = get_holding_value(pd_holding, decision_time_end, bool_keep=True)
+            keys = list(_pd_holding_record.keys())
+            _pd_holding_record['trial'] = i_trial
+            _pd_holding_record = _pd_holding_record[['trial'] + keys]
+            value_total = int(_pd_holding_record.value.sum())
 
-        pd_holding_record_list.append(_pd_holding_record)
-        time_span = round(time.time() - time_start, 1)
-        print(f'{time_span} s - completed investing in {decision_time_start} - {i_period + 1}/{n_period} - value {value_total}')
+            pd_holding_record_trial_list.append(_pd_holding_record)
+            time_span = round(time.time() - time_start, 1)
+            print(f'{time_span} s - {i_trial + 1} trial - completed investing in {decision_time_end} - {i_period + 1}/{n_period + 1} - '
+                  f'value {value_total}')
+
+        comp_growth_rate = round((10 ** (np.log10(value_total / 10000) / (len(pd_holding_record_trial_list) / 4)) - 1) * 100, 2)
+        print(f'{i_trial + 1} trial: Final compounded annual growth rate {comp_growth_rate}%')
+        pd_holding_record_trial = pd.concat(pd_holding_record_trial_list)
+        pd_holding_record_list.append(pd_holding_record_trial)
 
     pd_holding_record = pd.concat(pd_holding_record_list)
+    file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/wharton/result/pd_holding*')]) + 1
+    if 'write' == 'not write':
+        pd_holding_record.to_pickle(f'result/pd_holding_record_{file_label}.pkl')
+        with open(f'result/dict_transform_{file_label}.pkl', 'wb') as handle:
+            pickle.dump(dict_transform, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    decision_times = list(pd_holding_record.decision_time_end.unique())
+    decision_time_end_max = max(decision_times)
+    pd_holding_record_last = pd_holding_record.loc[pd_holding_record.decision_time_end == decision_time_end_max]
+    pd_value = pd_holding_record_last.groupby('trial').value.sum().reset_index()
 
-    comp_growth_rate = round((10 ** (np.log10(value_total / 10000) / (len(pd_holding_record_list)/4)) - 1) * 100, 2)
-    print(f'Final compounded annual growth rate {comp_growth_rate}%')
+    n_years = (pd.to_datetime(decision_times[-1]) - pd.to_datetime(decision_times[0])).days / 365
+    pd_value['annual_growth'] = 10 ** (np.log10(pd_value['value'] / 10000)  / n_years) - 1
+    growth_mean = round(pd_value['annual_growth'].mean() * 100, 1)
+    growth_std = round(pd_value['annual_growth'].std() * 100, 1)
+    print(f'Growth stats - mean {growth_mean} - std {growth_std}')
