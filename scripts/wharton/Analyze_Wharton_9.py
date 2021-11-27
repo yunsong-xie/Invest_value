@@ -1102,8 +1102,9 @@ if __name__ == '__main__':
     ratio_margin = 0.1
     n_stocks = 4
     n_threads = 1
-    _decision_time_start, _decision_time_end = '2005-01-01', '2021-12-30'
-    n_trials = 10
+    # _decision_time_start, _decision_time_end = '2005-01-01', '2021-12-30'
+    _decision_time_start, _decision_time_end = '2018-01-01', '2018-03-30'
+    n_trials = 1
 
     #################################################
     # sklearn parameters
@@ -1232,8 +1233,8 @@ if __name__ == '__main__':
         pd_holding_record_list.append(pd_holding_record_trial)
 
     pd_holding_record = pd.concat(pd_holding_record_list)
-    file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/wharton/result/pd_holding*')]) + 1
     if 'write' == 'not write':
+        file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/wharton/result/pd_holding*')]) + 1
         pd_holding_record.to_pickle(f'result/pd_holding_record_{file_label}.pkl')
         with open(f'result/dict_transform_{file_label}.pkl', 'wb') as handle:
             pickle.dump(dict_transform, handle, protocol=pickle.HIGHEST_PROTOCOL)

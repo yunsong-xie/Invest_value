@@ -4,11 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;&#10;6. rewrite sell_blind option">
-      <change afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" afterDir="false" />
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="1. Record transaction history, and historical buy/sell stock financial report&#10;2. recal metric for historical buy/sell stock financial report, update to latest metric&#10;4. record metric quantile&#10;5. function to calculate gain vs quantile/metric&#10;6. new bought stock weight based on metric&#10;&#10;&#10;7. Add parameter to adjust replacement time criteria from has be in the same decision time period to adjustable number of months before the purchase&#10;8. Add boolean controller to do replacement&#10;9. boolean controller to activate always 100% in stock - restock mode">
+      <change afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_11.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -80,8 +81,8 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.Analyze_Wharton_9">
-    <configuration name="Analyze_Wharton_8" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.Analyze_Wharton_10">
+    <configuration name="Analyze_Wharton_10" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -90,7 +91,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_8.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -135,7 +136,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="update_price" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -144,7 +145,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/update_price.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -157,9 +158,6 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -176,9 +174,9 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.Analyze_Wharton_10" />
         <item itemvalue="Python.Analyze_Wharton_9" />
-        <item itemvalue="Python.test" />
-        <item itemvalue="Python.Analyze_Wharton_8" />
+        <item itemvalue="Python.update_price" />
         <item itemvalue="Python.get_price_info" />
         <item itemvalue="Python.upload_report" />
       </list>
@@ -490,7 +488,14 @@
       <option name="project" value="LOCAL" />
       <updated>1637616195645</updated>
     </task>
-    <option name="localTasksCounter" value="43" />
+    <task id="LOCAL-00043" summary="version 9 yields the best result, should not change from now, use it as a benchmark&#10;1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;6. rewrite sell_blind option&#10;7. Make buy and sell functions for standard operation&#10;8. Corrected sell function bug of the when rdq is nan, it automatically grab the latest price info &#10;9. V10 add tuning nobs to select the num_p gauge for train/buy/sell datasets &#10;10. V10 needs to work on how to reproduce the best data in V9.">
+      <created>1637731651384</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1637731651384</updated>
+    </task>
+    <option name="localTasksCounter" value="44" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -506,7 +511,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="2021-07-11 init" />
     <MESSAGE value="test csv file" />
     <MESSAGE value="Test more files in static folder" />
     <MESSAGE value="Developing sec/yf reporting dates matching algorithm for US located companies." />
@@ -531,6 +535,7 @@
     <MESSAGE value="In V8, investing simulation is focused. For each investing section data sets are seperated into three:&#10;1. Training - all data for training and labeling do not violate time info constrain.&#10;2. Buying candidates - the stocks that have option to considering buying&#10;3. Selling candidates - the stocks that have option to considering selling, if any&#10;&#10;Time information constrain is the heavy focus in this version. Also number of the quarter of each entries is also included." />
     <MESSAGE value="Update on V8&#10;Worked the framework of monte carlo simulation. &#10;Still pending on design the stock buying/selling strategy." />
     <MESSAGE value="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info." />
-    <option name="LAST_COMMIT_MESSAGE" value="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info." />
+    <MESSAGE value="version 9 yields the best result, should not change from now, use it as a benchmark&#10;1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;6. rewrite sell_blind option&#10;7. Make buy and sell functions for standard operation&#10;8. Corrected sell function bug of the when rdq is nan, it automatically grab the latest price info &#10;9. V10 add tuning nobs to select the num_p gauge for train/buy/sell datasets &#10;10. V10 needs to work on how to reproduce the best data in V9." />
+    <option name="LAST_COMMIT_MESSAGE" value="version 9 yields the best result, should not change from now, use it as a benchmark&#10;1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;6. rewrite sell_blind option&#10;7. Make buy and sell functions for standard operation&#10;8. Corrected sell function bug of the when rdq is nan, it automatically grab the latest price info &#10;9. V10 add tuning nobs to select the num_p gauge for train/buy/sell datasets &#10;10. V10 needs to work on how to reproduce the best data in V9." />
   </component>
 </project>

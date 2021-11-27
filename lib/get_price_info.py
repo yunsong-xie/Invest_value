@@ -1043,6 +1043,9 @@ class StockPrice(StockEarning):
                 keys = ['time', 'open', 'high', 'low', 'volume', 'close', 'adjclose', 'symbol']
                 pd_data = pd.DataFrame({i:[] for i in keys})
 
+            if len(pd_data) > 0:
+                if pd_data.iloc[-1].time[11:] != '08:30:00':
+                    pd_data = pd_data.iloc[:-1].copy()
             if str(pd_data.time.dtypes) == 'object':
                 pd_data.time = pd_data.time.str[:10]
 
@@ -1282,6 +1285,7 @@ class StockPrice(StockEarning):
         pd_price_upload_list = []
         batch_cur_size = 0
         label_global_update = False
+        count_repull = 0
 
         def upload_price(_pd_price_upload_list):
             """
@@ -1356,6 +1360,7 @@ class StockPrice(StockEarning):
                         query_date_start = unix2date(date2unix(ipo_date) - 3600 * 24)[:10]
                         pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
                         self.con.execute(f'Delete from price where symbol = "{symbol}"')
+                        count_repull += 1
 
                 if len(pd_price) > 0:
                     pd_price['time'] = pd_price['time'].str[:10]
@@ -1372,11 +1377,11 @@ class StockPrice(StockEarning):
                 pd_price_upload_list, batch_cur_size = [], 0
 
             time_span = round(time.time() - time_start, 1)
-            print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)} - {symbol}', end='')
+            print(f'\rTime: {time_span} - {i_symbol + 1}/{len(symbols)} - {symbol} - repull count {count_repull}', end='')
 
         upload_price(pd_price_upload_list)
         if label_global_update:
             self.upload_transaction('price')
 
 self = StockPrice()
-stock_price = self
+# stock_price = self
