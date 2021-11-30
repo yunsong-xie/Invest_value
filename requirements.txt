@@ -1,6 +1,0 @@
-robin-stocks
-opencv-python
-termcolor
-pyEx
-selenium
-pyautogui

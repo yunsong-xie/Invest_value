@@ -9,8 +9,10 @@ import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
-
-import pyautogui as pygui
+try:
+    import pyautogui as pygui
+except:
+    a = 1
 import datetime
 import os
 import time
