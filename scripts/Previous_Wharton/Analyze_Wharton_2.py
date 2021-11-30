@@ -267,7 +267,7 @@ if __name__ == '__main__':
     # print(command_query)
     pd_data_raw = pd.read_sql(command_query, con)
     pd_data_raw = pd_data_raw[[i for i in pd_data_raw.keys() if i != 'rank']]
-    print('Completed wharton financial report data pull')
+    print('Completed Wharton financial report data pull')
     # Add marketcap info
     pd_marketcap_report_0 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_0', avg=14)
     pd_marketcap_report_1 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_1', avg=14)

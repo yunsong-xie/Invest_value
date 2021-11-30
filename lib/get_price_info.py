@@ -955,7 +955,7 @@ class StockPrice(StockEarning):
                 pd_fm_ori = pd_fm.copy()
                 # pd_fm.to_csv(path_fundamental, index=False)
 
-                # Every month update the symbol list to db. This is for wharton pull
+                # Every month update the symbol list to db. This is for Wharton pull
                 self.upload_transaction('listing')
                 self.upload_transaction('fundamental')
                 self._upload_list_fundamentals(pd_listing_ori, pd_fm_ori)

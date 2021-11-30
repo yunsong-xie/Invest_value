@@ -87,11 +87,11 @@
       <recent name="D:\PycharmProjects\Invest_value\capitalIQ" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\Previous_Wharton" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton\result" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\static\csv\stock_list" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\obsolete" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton" />
-      <recent name="D:\PycharmProjects\Investment\Invest_value" />
     </key>
   </component>
   <component name="RunManager" selected="Python.Analyze_Wharton_11">
@@ -152,7 +152,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_9.py" />
+      <option name="SCRIPT_NAME" value="D:\PycharmProjects\Investment\Invest_value\scripts\Previous_Wharton\Analyze_Wharton_9.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />

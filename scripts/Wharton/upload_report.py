@@ -20,7 +20,7 @@ stock_price = common_func.StockPrice()
 dir_fr = f'{DIR}\\static\\Financial_reports\\Wharton\\'
 path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
 
-pd_exclude_keywords = pd.read_csv(f'{DIR}/static/csv/wharton/exclude_keywords.csv')
+pd_exclude_keywords = pd.read_csv(f'{DIR}/static/csv/Wharton/exclude_keywords.csv')
 
 path_fr_db = f'{dir_fr}/fr_wharton.db'
 
@@ -60,19 +60,19 @@ def get_column_info(path_columns):
 
 def read_report_data(path_csv, path_columns):
     """
-    Read wharton report in csv format, and then output the simplifed columns.
+    Read Wharton report in csv format, and then output the simplifed columns.
     Simplifed column use exclude_keywords.csv file.
 
     Args:
-        path_csv (str): path of the wharton report csv file.
+        path_csv (str): path of the Wharton report csv file.
 
     Returns:
-        (pandas.dataframe): Simplifed wharton financial report
+        (pandas.dataframe): Simplifed Wharton financial report
     """
     pd_columns, dict_columns, dict_types, set_types_date = get_column_info(path_columns)
-    print('Start reading wharton financial report csv file')
+    print('Start reading Wharton financial report csv file')
     pd_wharton = pd.read_csv(path_csv).rename(columns={'tic': 'symbol'})
-    print('Completed reading wharton financial report csv file')
+    print('Completed reading Wharton financial report csv file')
 
     columns = list(pd_wharton.columns)
     columns_in = [i for i in columns if i in dict_columns]
@@ -105,7 +105,7 @@ def read_report_data(path_csv, path_columns):
 
 def finalize_report(pd_wharton_fr, write_out=False):
     """
-    Finalize the wharton financial report. This function does the two things
+    Finalize the Wharton financial report. This function does the two things
     1. Re-arange the column sequence
     2. change the date format from 20000101 to 2000-01-01.
     Args:
@@ -129,19 +129,19 @@ def finalize_report(pd_wharton_fr, write_out=False):
     date_now = str(datetime.datetime.now())[:10].replace('-', '')
     if write_out:
         pd_wharton_fr.to_pickle(f'{dir_fr}/wharton_FR_{date_now}.pkl').to_pickle(f'{dir_fr}/wharton_FR_{date_now}.pkl')
-    print('Completed finalizing wharton financial report data')
+    print('Completed finalizing Wharton financial report data')
     return pd_wharton_fr
 
 
 def read_column_data(path_columns):
     """
-    Read column info table for the wharton financial report
+    Read column info table for the Wharton financial report
 
     Args:
         path_columns (str): path to the column info.
 
     Returns:
-        (pandas.dataframe): column info from wharton financial report
+        (pandas.dataframe): column info from Wharton financial report
     """
 
     pd_columns = pd.read_csv(path_columns)
@@ -158,7 +158,7 @@ def read_column_data(path_columns):
 
 def upload_report_data(path_fr_db, pd_wharton_fr, pd_columns):
     """
-    Upload wharton financial report to db file, programe will automatically upload the data does not
+    Upload Wharton financial report to db file, programe will automatically upload the data does not
     exist in the db file.
     Args:
         path_fr_db (str): path of the db file
@@ -257,14 +257,14 @@ def check_db_file(path_fr_db, pd_wharton_fr, pd_columns):
 
 
 if __name__ == '__main__':
-    # Read wharton financial report data
+    # Read Wharton financial report data
     path_csv = max(glob.glob(f'{dir_fr}/wharton_FR_*.csv'))
     print(f'Uploading file: {os.path.basename(path_csv)}')
     path_columns = glob.glob(f'{dir_fr}/wharton_columns.csv')[0]
     pd_wharton_fr = read_report_data(path_csv, path_columns)
     pd_wharton_fr = finalize_report(pd_wharton_fr, write_out=False)
 
-    # Read wharton financial report data column info table
+    # Read Wharton financial report data column info table
 
     pd_columns = read_column_data(path_columns)
 

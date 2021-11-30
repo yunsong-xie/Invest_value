@@ -11,6 +11,9 @@ from matplotlib import pyplot as plt
 import lib as common_func
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 import xgboost, scipy
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 import multiprocessing as mp
 import pickle
 
@@ -370,7 +373,7 @@ if __name__ == '__main__0':
     pd_data_raw = pd.read_sql(command_query, con)
     # pd_data_raw_1 = pd_data_raw.copy()
     # print(command_query)
-    print('Completed wharton financial report data pull')
+    print('Completed Wharton financial report data pull')
     # Add marketcap info
 
     rdq_list = [i for i in pd_data_raw.columns if 'rdq' in i not in ['rdq_q4', 'rdq_q0']]
@@ -543,6 +546,50 @@ if 'Define Function' == 'Define Function':
 
         return x_train, y_train, dict_transform
 
+    def get_model_lstm(pd_data, dict_transform):
+
+        aug_sigma_train = dict_transform['aug_sigma_train']
+        pd_mdata, features_x = prepare_features(pd_data, dict_transform['p_feature'], training=True)
+
+        for feature in features_x:
+            col = np.log10(pd_mdata[feature])
+            mean, std = col.mean(), col.std()
+            dict_transform['mean'][feature] = mean
+            dict_transform['std'][feature] = std
+            col = (col - mean) / std / dict_transform['std_adjust']
+            pd_mdata[feature] = col
+
+        pd_mdata_cal = pd_mdata
+
+        if dict_transform['aug_size_train'] > 0:
+            n_extra = aug_size_train * len(pd_mdata_cal)
+            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size_train'], )))])
+            pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
+            for feature in features_x:
+                coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma_train / dict_transform['std_adjust']
+                pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
+            pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+
+        x_train, y_train, dict_transform = prepare_lstm_computing(pd_mdata_cal, dict_transform)
+
+        layer_input = tf.keras.layers.Input(shape=(x_train.shape[1], x_train.shape[2]))
+        # Shape [batch, time, features] => [batch, time, lstm_units]
+        x = tf.keras.layers.LSTM(dict_transform['lstm_units'])(layer_input)
+        x = tf.keras.layers.Dense(units=1)(x)
+        regr = tf.keras.models.Model(inputs=[layer_input], outputs=x)
+
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='mean_absolute_error', patience=5, mode='min')
+
+        regr.compile(loss=tf.losses.MeanSquaredError(),
+                     optimizer=tf.optimizers.Adam(),
+                     metrics=[tf.metrics.MeanAbsoluteError()])
+
+        _ = regr.fit(x_train, y_train, epochs=dict_transform['lstm_epochs'], batch_size=128, callbacks=[early_stopping])
+
+        regr_list = [regr]
+        dict_transform['features_x'] = features_x
+        return dict_transform, regr_list
+
     def get_model_sklearn(pd_train, dict_transform):
 
         pd_data = pd_train
@@ -711,7 +758,10 @@ if 'Define Function' == 'Define Function':
         y_array_pred_list = []
         for i_regr, regr in enumerate(regr_list):
             _pd_mdata_pred = pd.DataFrame(data=x_array_pred, columns=features_x)
-            x_array_final = _pd_mdata_pred[dict_transform['features_x_select']]
+            if 'keras' in str(type(regr)):
+                x_array_final, _, _ = prepare_lstm_computing(_pd_mdata_pred, dict_transform, output_y=False)
+            else:
+                x_array_final = _pd_mdata_pred[dict_transform['features_x_select']]
             y_array_as_pred = regr.predict(x_array_final)
             y_array_pred_entry = y_array_as_pred.reshape(dict_transform['aug_size_pred'] + 1, X_cal.shape[0]).T
             y_array_pred_list.append(y_array_pred_entry)
@@ -1433,7 +1483,7 @@ if __name__ == '__main__':
     pd_transform_save = pd.DataFrame(dict_transform_save_list)
 
     if 'write' == 'not write':
-        file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/wharton/result/dict_save_data*')] + [0]) + 1
+        file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/Wharton/result/dict_save_data*')] + [0]) + 1
         file_label = str(file_label).rjust(2, '0')
         dict_save_data = {'pd_holding_record_final': pd_fr_record_final, 'pd_fr_record_final': pd_fr_record_final,
                           'pd_transform_save': pd_transform_save}

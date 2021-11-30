@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import time
 import glob
-
-import scipy.stats
 from matplotlib import pyplot as plt
 import lib as common_func
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -65,9 +63,9 @@ if __name__ == '__main__0':
     year_desc_positive_list = ['Operating Activities - Net Cash Flow', 'profit', 'Cash and Short-Term Investments']
     year_desc_grow_dict = {'ALL': {0: ['Operating Activities - Net Cash Flow', 'Revenue - Total', 'Stockholders Equity - Total',
                                        'profit', 'Cash and Short-Term Investments', 'Current Assets - Total']},
-                           0: {0.015: ['Revenue - Total'],
-                               0.0151: ['Stockholders Equity - Total']},
-                           1: {0.005: ['Revenue - Total']}, }
+                           0: {0.001: ['Revenue - Total'],
+                               0.0015: ['Stockholders Equity - Total']},
+                           1: {0: ['Revenue - Total']}, }
 
     desc_list_all = list(set(desc_non_null_list + list(desc_output_dict) + desc_positive_list))
     _desc_greater_list = []
@@ -160,40 +158,42 @@ if __name__ == '__main__0':
     col_query_avg_0 = 'max(ty0.rdq) as rdq_0, ' + ', '.join([f'avg(ty0.{i}) as {i}_0' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_1 = 'max(ty1.rdq) as rdq_1, ' + ', '.join([f'avg(ty1.{i}) as {i}_1' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_2 = 'max(ty2.rdq) as rdq_2, ' + ', '.join([f'avg(ty2.{i}) as {i}_2' for i in col_output_list_avg if i != 'rdq'])
-    col_query_avg_p = 'max(typ.rdq) as rdq_p, ' + ', '.join([f'avg(typ.{i}) as {i}_p' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q0 = 'max(tq.rdq) as rdq_q0, ' + ', '.join([f'avg(tq.{i}) as {i}_q0' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q1 = 'max(tq.rdq) as rdq_q1, ' + ', '.join([f'avg(tq.{i}) as {i}_q1' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q4 = 'max(tq.rdq) as rdq_q4, ' + ', '.join([f'avg(tq.{i}) as {i}_q4' for i in col_output_list_avg if i != 'rdq'])
+
+    col_query_avg_pq1 = 'max(tq.rdq) as rdq_pq1, ' + ', '.join([f'avg(tq.{i}) as {i}_pq1' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_pq2 = 'max(tq.rdq) as rdq_pq2, ' + ', '.join([f'avg(tq.{i}) as {i}_pq2' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_pq3 = 'max(tq.rdq) as rdq_pq3, ' + ', '.join([f'avg(tq.{i}) as {i}_pq3' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_p = 'max(typ.rdq) as rdq_p, ' + ', '.join([f'avg(typ.{i}) as {i}_p' for i in col_output_list_avg if i != 'rdq'])
+
 
     merge_query_x = ''
     year_list = list(range(n_year_x))
     for key_time in year_list:
         for key_item in col_output_list_avg:
             merge_query_x += f', ty{key_time}.{key_item}_{key_time}'
-    quarter_list = [0, 1, 4]
+    quarter_list = ['q0', 'q1', 'q4']
     for key_time in quarter_list:
         for key_item in col_output_list_avg:
-            merge_query_x += f', tq{key_time}.{key_item}_q{key_time}'
+            merge_query_x += f', t{key_time}.{key_item}_{key_time}'
 
-    merge_query_y = ''
-    for key_time in ['p']:
+    p_list = ['p', 'pq1', 'pq2', 'pq3']
+    dict_merge_query_y = {}
+    for key_time in p_list:
+        merge_query_y = ''
         for key_item in col_output_list_avg:
             merge_query_y += f', ty{key_time}.{key_item}_{key_time}'
+        dict_merge_query_y[key_time] = merge_query_y
+
 
     query_translate = ' rank, symbol, datafqtr, num_p, '
-    for key_time in year_list + ['p']:
+    for key_time in year_list + quarter_list + p_list:
         for col in col_output_list_avg:
             if col in dict_col_name_reverse:
                 query_translate += f'{col}_{key_time} as {desc_output_dict[dict_col_name_reverse[col]]}_{key_time}, '
             else:
                 query_translate += f'{col}_{key_time} as {desc_output_dict[col]}_{key_time}, '
-        query_translate += '\n'
-    for key_time in quarter_list:
-        for col in col_output_list_avg:
-            if col in dict_col_name_reverse:
-                query_translate += f'{col}_q{key_time} as {desc_output_dict[dict_col_name_reverse[col]]}_q{key_time}, '
-            else:
-                query_translate += f'{col}_q{key_time} as {desc_output_dict[col]}_q{key_time}, '
         query_translate += '\n'
     query_translate = query_translate[:-3]
 
@@ -269,11 +269,30 @@ if __name__ == '__main__0':
             select tf.symbol, tf.rdq, count(typ.rdq) as num_p, {col_query_avg_p}
             from filter_3_year tf, filter_0 typ
             where tf.symbol = typ.symbol 
-            and typ.rank - tf.rank = 1 
+            and typ.rank - tf.rank >= 1 
+            and typ.rank - tf.rank <= 4
             group by tf.symbol, tf.rdq, tf.datafqtr
             order by tf.symbol, tf.rdq, tf.datafqtr
         )
         select * from data_temp
+    ),
+    datapq1 as (
+        select tf.symbol, tf.rdq, {col_query_avg_pq1}
+        from filter_3_year tf, filter_0 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = -1 
+        group by tf.symbol, tf.rdq, tf.datafqtr
+    ),
+    datapq2 as (
+        select tf.symbol, tf.rdq, {col_query_avg_pq2}
+        from filter_3_year tf, filter_0 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = -2
+        group by tf.symbol, tf.rdq, tf.datafqtr
+    ),
+    datapq3 as (
+        select tf.symbol, tf.rdq, {col_query_avg_pq3}
+        from filter_3_year tf, filter_0 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = -3
+        group by tf.symbol, tf.rdq, tf.datafqtr
     ),
     data_merge_x as (
         select ty0.rank, ty0.symbol, ty0.datafqtr, ty0.rdq {merge_query_x}
@@ -285,48 +304,58 @@ if __name__ == '__main__0':
         and ty0.symbol = tq1.symbol and ty0.rdq = tq1.rdq
         and ty0.symbol = tq4.symbol and ty0.rdq = tq4.rdq
     ), 
-    data_merge_xy as (
-        select tyx.*, typ.num_p {merge_query_y}
+    data_merge_xy_0 as (
+        select tyx.*, typ.num_p {dict_merge_query_y['p']}
         from data_merge_x tyx left join datap typ
         on tyx.symbol = typ.symbol and tyx.rdq = typ.rdq 
     ), 
+    data_merge_xy_1 as (
+        select tyx.* {dict_merge_query_y['pq1']}
+        from data_merge_xy_0 tyx left join datapq1 typq1
+        on tyx.symbol = typq1.symbol and tyx.rdq = typq1.rdq
+    ), 
+    data_merge_xy_2 as (
+        select tyx.* {dict_merge_query_y['pq2']}
+        from data_merge_xy_1 tyx left join datapq2 typq2
+        on tyx.symbol = typq2.symbol and tyx.rdq = typq2.rdq
+    ), 
+    data_merge_xy_3 as (
+        select tyx.* {dict_merge_query_y['pq3']}
+        from data_merge_xy_2 tyx left join datapq3 typq3
+        on tyx.symbol = typq3.symbol and tyx.rdq = typq3.rdq
+    ), 
+    data_merge_xy as (
+        select * from data_merge_xy_3
+    ),
     data_translate as (
         select {query_translate} from data_merge_xy
+    ),
+    data_final as (
+        select * from data_translate
+        {query_growth_filter}
     )
-
-    select * from data_translate
-    {query_growth_filter}
-
+    select * from data_final
+    
     """
-    # print(command_query)
     pd_data_raw = pd.read_sql(command_query, con)
+    # print(command_query)
+
     pd_data_raw = pd_data_raw[[i for i in pd_data_raw.keys() if i != 'rank']]
-    print('Completed wharton financial report data pull')
+    print('Completed Wharton financial report data pull')
     # Add marketcap info
-    pd_marketcap_report_0 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_0', avg=14)
-    print('Completed pulling 0 year price info')
-    pd_marketcap_report_1 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_1', avg=14)
-    print('Completed pulling 1 year price info')
-    pd_marketcap_report_2 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_2', avg=14)
-    print('Completed pulling 2 year price info')
-    pd_marketcap_report_q1 = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_q1', avg=14)
-    print('Completed pulling 1 quarter price info')
-    pd_marketcap_report_p = stock_price.get_marketcap_time(pd_data_raw, time_col='rdq_p', avg=14)
-    print('Completed pulling predicting price info')
 
-    print('Completed market report data pull')
-    pd_marketcap_report_0 = pd_marketcap_report_0.rename(columns={'marketcap': 'marketcap_0'})
-    pd_marketcap_report_1 = pd_marketcap_report_1.rename(columns={'marketcap': 'marketcap_1'})
-    pd_marketcap_report_2 = pd_marketcap_report_2.rename(columns={'marketcap': 'marketcap_2'})
-    pd_marketcap_report_q1 = pd_marketcap_report_q1.rename(columns={'marketcap': 'marketcap_q1'})
-    pd_marketcap_report_p = pd_marketcap_report_p.rename(columns={'marketcap': 'marketcap_p'})
+    rdq_list = [i for i in pd_data_raw.columns if 'rdq' in i not in ['rdq_q4', 'rdq_q0']]
+    pd_data = pd_data_raw.copy()
+    for i_rdq, rdq in enumerate(rdq_list):
+        print(f'\rPulling {rdq} price info - {i_rdq}/{len(rdq_list)}', end='')
+        time_label = rdq.split('_')[-1]
+        _pd_marketcap_report = stock_price.get_marketcap_time(pd_data_raw, time_col=rdq, avg=14)
+        _pd_marketcap_report = _pd_marketcap_report.rename(columns={'marketcap': f'marketcap_{time_label}'})
+        pd_data = pd_data.merge(_pd_marketcap_report[['symbol', rdq, f'marketcap_{time_label}']], on=['symbol', rdq], how='left')
 
-    pd_data = pd_data_raw.merge(pd_marketcap_report_0[['symbol', 'rdq_0', 'marketcap_0']], on=['symbol', 'rdq_0'], how='inner')
-    pd_data = pd_data.merge(pd_marketcap_report_1[['symbol', 'rdq_1', 'marketcap_1']], on=['symbol', 'rdq_1'], how='inner')
-    pd_data = pd_data.merge(pd_marketcap_report_2[['symbol', 'rdq_2', 'marketcap_2']], on=['symbol', 'rdq_2'], how='inner')
-    pd_data = pd_data.merge(pd_marketcap_report_q1[['symbol', 'rdq_q1', 'marketcap_q1']], on=['symbol', 'rdq_q1'], how='inner')
-    pd_data = pd_data.merge(pd_marketcap_report_p[['symbol', 'rdq_p', 'marketcap_p']], on=['symbol', 'rdq_p'], how='left')
-    keys_front = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'marketcap_q1', 'marketcap_1', 'marketcap_2']
+    print('\rCompleted market report data pull')
+
+    keys_front = ['symbol', 'datafqtr'] + [f'marketcap_{i.split("_")[-1]}' for i in rdq_list]
     pd_data = pd_data[keys_front + [i for i in pd_data.columns if i not in keys_front]]
     pd_data = pd_data.sort_values(by='marketcap_0')
     pd_data = pd_data.loc[(pd_data.marketcap_0 > 0) & (pd_data.marketcap_1 > 0) &
@@ -365,8 +394,22 @@ if 'Define Function' == 'Define Function':
         else:
             raise ValueError(f'direction can only be either encode or decode, input is {direction}')
 
-    def prepare_features(pd_data):
-        pd_mdata = (pd_data['marketcap_p'] / pd_data['marketcap_0']).rename('mc_growth').reset_index()[['mc_growth']]
+    def prepare_features(pd_data, dict_transform, training=False):
+        coeff_fade = dict_transform['coeff_fade']
+        if training:
+            p_feature = dict_transform['p_feature_train']
+        else:
+            p_feature = dict_transform['p_feature_decision']
+
+        time_col = f'rdq_{p_feature.split("_")[-1]}'
+        pd_mdata = pd_data[[time_col]].copy()
+        if (coeff_fade > 0) & (coeff_fade <= 1):
+            pd_mdata['weight'] = coeff_fade ** (np.abs(pd.to_datetime(pd_mdata[time_col]) -
+                                                       pd.to_datetime(pd_mdata[time_col]).max()).dt.days / 365)
+        else:
+            raise ValueError('coeff_fade has to be a positive number that is smaller 1 ')
+        pd_mdata['mc_growth'] = pd_data[p_feature] / pd_data['marketcap_0']
+
         pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
         pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
 
@@ -401,6 +444,7 @@ if 'Define Function' == 'Define Function':
                 feature_x = f'bvr_{feature}_q{i_quarter}'
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_0'] / pd_data[f'book_value_q{i_quarter}'])
                 features_x.append(feature_x)
+
         return pd_mdata, features_x
 
     def prepare_lstm_computing(pd_mdata, dict_transform, output_y=True):
@@ -434,70 +478,10 @@ if 'Define Function' == 'Define Function':
 
         return x_train, y_train, dict_transform
 
-    def get_model_sklearn(pd_data, dict_transform, n_estimators=500, learning_rate=1, max_depth=3, tree_method=None, predictor=None):
-
-        n_estimators_list = n_estimators if type(n_estimators) in [list, np.ndarray, range] else [n_estimators]
-        learning_rate_list = learning_rate if type(learning_rate) in [list, np.ndarray, range] else [learning_rate]
-
-        n_year_x = dict_transform['n_year_x']
-        func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-        aug_sigma = dict_transform['aug_sigma']
-
-        pd_mdata, features_x = prepare_features(pd_data)
-
-        features_bvr_year = ['cash_flow', 'revenue', 'profit']
-        features_growth = ['book_value', 'revenue']
-        features_x_select = ['mc_bv_0', 'mc_bv_1', 'mc_bv_q1']
-        for _ in features_growth:
-            features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
-        for _ in features_bvr_year:
-            features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & (('0' in i) | ('0' in i))]
-
-        for feature in features_x:
-            col = np.log10(pd_mdata[feature])
-            mean, std = col.mean(), col.std()
-            dict_transform['mean'][feature] = mean
-            dict_transform['std'][feature] = std
-            col = (col - mean) / std / dict_transform['std_adjust']
-            pd_mdata[feature] = col
-
-        pd_mdata_cal = pd_mdata
-
-        if dict_transform['aug_size'] > 0:
-            n_extra = aug_size * len(pd_mdata_cal)
-            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size'], )))])
-            pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
-            for feature in features_x:
-                coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma / dict_transform['std_adjust']
-                pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
-            pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
-
-        # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
-        # regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
-        regr_list = []
-        x_train, y_train_ori = pd_mdata_cal[features_x_select].values, pd_mdata_cal['mc_growth_log'].values
-        y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
-        dict_transform['y_median'] = y_median
-        dict_transform['y_std'] = y_std
-        time_start = time.time()
-        for i_regr in range(len(n_estimators_list)):
-            n_estimators = n_estimators_list[i_regr]
-            learning_rate = learning_rate_list[i_regr]
-            regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
-                                        predictor=predictor, tree_method=tree_method, random_state=np.random.randint(999999))
-            regr.fit(x_train, y_train)
-            regr_list.append(regr)
-            time_span = round(time.time() - time_start, 1)
-            print(f'\rCompleted regression {i_regr + 1}/{len(n_estimators_list)} - Time {time_span} s', end='')
-        print()
-        dict_transform['features_x'] = features_x
-        dict_transform['features_x_select'] = features_x_select
-        return dict_transform, regr_list
-
     def get_model_lstm(pd_data, dict_transform):
 
         aug_sigma = dict_transform['aug_sigma']
-        pd_mdata, features_x = prepare_features(pd_data)
+        pd_mdata, features_x = prepare_features(pd_data, dict_transform['p_feature'], training=True)
 
         for feature in features_x:
             col = np.log10(pd_mdata[feature])
@@ -538,6 +522,68 @@ if 'Define Function' == 'Define Function':
         dict_transform['features_x'] = features_x
         return dict_transform, regr_list
 
+    def get_model_sklearn(pd_data, dict_transform, n_estimators=500, learning_rate=1, max_depth=3,
+                          tree_method=None, predictor=None):
+
+        n_estimators_list = n_estimators if type(n_estimators) in [list, np.ndarray, range] else [n_estimators]
+        learning_rate_list = learning_rate if type(learning_rate) in [list, np.ndarray, range] else [learning_rate]
+
+        func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
+        aug_sigma = dict_transform['aug_sigma']
+
+        pd_mdata, features_x = prepare_features(pd_data, dict_transform, training=True)
+
+        features_bvr_year = ['cur_asset', 'cash_flow', 'revenue', 'profit']
+        features_growth = ['book_value', 'revenue']
+        features_x_select = ['mc_bv_0', 'mc_bv_1']
+        for _ in features_growth:
+            # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
+            # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i)]
+            features_x_select += [i for i in features_x if (_ in i) & ('growth' in i)]
+        for _ in features_bvr_year:
+            features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & (('0' in i) | ('0' in i))]
+        for feature in features_x:
+            col = np.log10(pd_mdata[feature])
+            mean, std = col.mean(), col.std()
+            dict_transform['mean'][feature] = mean
+            dict_transform['std'][feature] = std
+            col = (col - mean) / std / dict_transform['std_adjust']
+            pd_mdata[feature] = col
+
+        pd_mdata_cal = pd_mdata
+
+        if dict_transform['aug_size'] > 0:
+            n_extra = aug_size * len(pd_mdata_cal)
+            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size'], )))])
+            pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
+            for feature in features_x:
+                coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma / dict_transform['std_adjust']
+                pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
+            pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+
+        # regr = RandomForestRegressor(max_depth=3, n_estimators=2500)
+        # regr = GradientBoostingRegressor(max_depth=3, n_estimators=n_estimators)
+        regr_list = []
+        x_train, y_train_ori = pd_mdata_cal[features_x_select].values, pd_mdata_cal['mc_growth_log'].values
+        y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
+        weight_train = pd_mdata_cal['weight']
+        dict_transform['y_median'] = y_median
+        dict_transform['y_std'] = y_std
+        time_start = time.time()
+        for i_regr in range(len(n_estimators_list)):
+            n_estimators = n_estimators_list[i_regr]
+            learning_rate = learning_rate_list[i_regr]
+            regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
+                                        predictor=predictor, tree_method=tree_method, random_state=np.random.randint(999999))
+            regr.fit(x_train, y_train, sample_weight=weight_train)
+            regr_list.append(regr)
+            time_span = round(time.time() - time_start, 1)
+            print(f'\rCompleted regression {i_regr + 1}/{len(n_estimators_list)} - Time {time_span} s', end='')
+        print()
+        dict_transform['features_x'] = features_x
+        dict_transform['features_x_select'] = features_x_select
+        return dict_transform, regr_list
+
     def get_prediction(pd_data, dict_transform, regr_list):
         if type(regr_list) is list:
             regr_list = regr_list
@@ -546,7 +592,7 @@ if 'Define Function' == 'Define Function':
         # n_year_x = dict_transform['n_year_x']
         # features_x = dict_transform['features_x']
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-        pd_mdata, features_x = prepare_features(pd_data)
+        pd_mdata, features_x = prepare_features(pd_data, dict_transform)
 
         for feature in dict_transform['mean']:
             col = np.log10(pd_mdata[feature])
@@ -584,31 +630,34 @@ if 'Define Function' == 'Define Function':
 
     def e2e_pred_data(pd_data, dict_transform, regr_list, n_sigma=2):
         log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr_list)
-
-        head_keys = ['symbol', 'datafqtr', 'marketcap_p', 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
-                     'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
+        head_keys = ['symbol', 'datafqtr', dict_transform['p_feature_decision'], 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
+                     'log_growth_mc_pred_median', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
         pd_data['log_growth_mc_pred_mean'] = log_grow_pred_mean
         pd_data['log_growth_mc_pred_median'] = log_grow_pred_median
         pd_data['log_growth_mc_pred_std'] = log_grow_pred_std
         pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * n_sigma
 
-        pd_data['log_growth_mc'] = np.log10(pd_data['marketcap_p'] / pd_data['marketcap_0'])
+        pd_data['log_growth_mc'] = np.log10(pd_data[dict_transform['p_feature_decision']] / pd_data['marketcap_0'])
         pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
         return pd_data
 
+
 if 'Training' == 'Training':
     predict_method = 'sklearn'
-    dict_revenue_growth_min = {'1': 0.1, '0': 0.35}
-    dict_book_value_growth_min = {'1': 0.1, '0': 0.35}
-    mc_book_ratio = [2, 65]
-    mc_revenue_ratio = [2, 65]
-    marketcap_min = 100
-    ratio_train = 0.65
-    ratio_dev = 0.2
-    n_year_x = 3
-    func_shift, func_power = 2, 2
+    dict_revenue_growth_min = {'1': 0.0, '0': 0.1}
+    dict_book_value_growth_min = {'1': 0.0, '0': 0.1}
+    dict_revenue_growth_max = {}
+    dict_book_value_growth_max = {}
+    mc_book_ratio = [1, 65]
+    mc_revenue_ratio = [1, 65]
+    ratio_train = 2021
+    coeff_fade = 0.8
+    func_shift, func_power = 5, 3
     std_adjust = 2
     aug_size, aug_sigma = 100, 0.2
+    time_shuffle = 'time'
+    p_feature_train = 'marketcap_pq1'
+    p_feature_decision = 'marketcap_p'
 
     #################################################
     # sklearn parameters
@@ -616,10 +665,13 @@ if 'Training' == 'Training':
     epochs = 100
     #################################################
     # sklearn parameters
-    n_regr = 5
-    n_estimators_min, n_estimators_max = 650, 950
+    n_regr = 30
+    n_estimators_min, n_estimators_max = 100, 150
     learning_rate_min, learning_rate_max = 0.85, 1
     #################################################
+
+    n_year_x = 3
+    marketcap_min = 100
     max_depth, tree_method, predictor = 3, 'gpu_hist', 'gpu_predictor'
     n_estimators_list = range(n_estimators_min, n_estimators_max, (n_estimators_max - n_estimators_min) // n_regr)
     learning_rate_list = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
@@ -629,41 +681,60 @@ if 'Training' == 'Training':
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rate_list[:_]
 
     _pd_data = pd_data_ori.copy()
+    if time_shuffle.lower == 'random':
+        _pd_data = _pd_data.iloc[sorted(np.arange(10), key=lambda x: np.random.random())]
     for i in dict_revenue_growth_min:
-        _pd_data = _pd_data.loc[_pd_data[f'revenue_{i}'] / _pd_data[f'revenue_{int(i) + 1}'] > dict_revenue_growth_min[i]]
+        _pd_data = _pd_data.loc[(_pd_data[f'revenue_{i}'] / _pd_data[f'revenue_{int(i) + 1}']) > (1 + dict_revenue_growth_min[i])]
     for i in dict_book_value_growth_min:
-        _pd_data = _pd_data.loc[_pd_data[f'book_value_{i}'] / _pd_data[f'book_value_{int(i)+1}'] > dict_book_value_growth_min[i]]
-    pd_data = _pd_data.loc[~_pd_data.num_p.isna()].copy()
-    pd_data_extra = _pd_data.loc[_pd_data.num_p.isna()].copy()
+        _pd_data = _pd_data.loc[(_pd_data[f'book_value_{i}'] / _pd_data[f'book_value_{int(i)+1}']) > (1 + dict_book_value_growth_min[i])]
+    for i in dict_revenue_growth_max:
+        _pd_data = _pd_data.loc[(_pd_data[f'revenue_{i}'] / _pd_data[f'revenue_{int(i) + 1}']) <= (1 + dict_revenue_growth_max[i])]
+    for i in dict_book_value_growth_max:
+        _pd_data = _pd_data.loc[(_pd_data[f'book_value_{i}'] / _pd_data[f'book_value_{int(i)+1}']) <= (1 + dict_book_value_growth_max[i])]
 
-    pd_data = pd_data.loc[((pd_data.marketcap_p / pd_data.marketcap_0) <= 6) &
-                          ((pd_data.marketcap_p / pd_data.marketcap_0) >= 10 ** -1)]
-    pd_data['datafqtr'] = pd_data['rdq_0'].str[:4].astype(float) + (pd_data['rdq_0'].str[5:7].astype(float) + 1) / 12
-    pd_data = pd_data.loc[((pd_data.marketcap_0 / pd_data.book_value_0) <= mc_book_ratio[1]) &
-                          ((pd_data.marketcap_0 / pd_data.book_value_0) >= mc_book_ratio[0])]
-    pd_data = pd_data.loc[((pd_data.marketcap_0 / pd_data.revenue_0) <= mc_revenue_ratio[1]) &
-                          ((pd_data.marketcap_0 / pd_data.revenue_0) >= mc_revenue_ratio[0])]
-    pd_data = pd_data.loc[pd_data.marketcap_0 >= marketcap_min]
+    #_pd_data = _pd_data.loc[(_pd_data[f'revenue_0'] / _pd_data[f'revenue_1']) >= (_pd_data[f'revenue_1'] / _pd_data[f'revenue_2'])]
+    #_pd_data = _pd_data.loc[(_pd_data[f'book_value_0'] / _pd_data[f'book_value_1']) >=
+    #                        (_pd_data[f'book_value_1'] / _pd_data[f'book_value_2'])]
+    _pd_data = _pd_data.loc[(_pd_data[f'revenue_q0'] / _pd_data[f'revenue_q4']) >= (_pd_data[f'revenue_1'] / _pd_data[f'revenue_2'])]
+    _pd_data = _pd_data.loc[(_pd_data[f'book_value_q0'] / _pd_data[f'book_value_q4']) >=
+                            (_pd_data[f'book_value_1'] / _pd_data[f'book_value_2'])]
+    #_pd_data = _pd_data.loc[(_pd_data[f'revenue_q0'] / _pd_data[f'revenue_q4']) *
+    #                        (_pd_data[f'book_value_q0'] / _pd_data[f'book_value_q4']) >=
+    #                        (_pd_data[f'revenue_1'] / _pd_data[f'revenue_2']) *
+    #                        (_pd_data[f'book_value_1'] / _pd_data[f'book_value_2'])]
+    _pd_data = _pd_data.loc[((_pd_data[p_feature] / _pd_data.marketcap_0) <= 10) &
+                            ((_pd_data[p_feature] / _pd_data.marketcap_0) >= 10 ** -1)]
+    _pd_data = _pd_data.loc[((_pd_data.marketcap_0 / _pd_data.book_value_0) <= mc_book_ratio[1]) &
+                            ((_pd_data.marketcap_0 / _pd_data.book_value_0) >= mc_book_ratio[0])]
+    _pd_data = _pd_data.loc[((_pd_data.marketcap_0 / _pd_data.revenue_0) <= mc_revenue_ratio[1]) &
+                            ((_pd_data.marketcap_0 / _pd_data.revenue_0) >= mc_revenue_ratio[0])]
+    _pd_data = _pd_data.loc[_pd_data.marketcap_0 >= marketcap_min]
+    _pd_data = _pd_data.sort_values(by='rdq_0')
+    _pd_data['datafqtr'] = (_pd_data['rdq_p'].str[:4].astype(float) + (_pd_data['rdq_p'].str[5:7].astype(float) - 1) / 12 +
+                            (_pd_data['rdq_p'].str[8:10].astype(float) - 1) / 365).round(2)
 
-    pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_p / pd_data_extra.marketcap_0) <= 6) &
-                                      ((pd_data_extra.marketcap_p / pd_data_extra.marketcap_0) >= 10 ** -1)]
-    pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_0 / pd_data_extra.book_value_0) <= mc_book_ratio[1]) &
-                                      ((pd_data_extra.marketcap_0 / pd_data_extra.book_value_0) >= mc_book_ratio[0])]
-    pd_data_extra = pd_data_extra.loc[((pd_data_extra.marketcap_0 / pd_data_extra.revenue_0) <= mc_revenue_ratio[1]) &
-                                      ((pd_data_extra.marketcap_0 / pd_data_extra.revenue_0) >= mc_revenue_ratio[0])]
-    pd_data_extra = pd_data_extra.loc[pd_data_extra.marketcap_0 >= marketcap_min]
-    pd_data = pd_data.sort_values(by='rdq_0')
+    pd_data = _pd_data.loc[_pd_data.num_p >= 4].copy()
+    pd_data_extra = _pd_data.loc[(_pd_data.num_p < 4) | (_pd_data.num_p.isna())].copy()
+
     pd_data.index = np.arange(len(pd_data))
-    n_threshold_train, n_threshold_dev = int(len(pd_data) * ratio_train), int(len(pd_data) * ratio_dev)
+    if type(ratio_train) in [float, int]:
+        if ratio_train < 1:
+            n_threshold_train = int(len(pd_data) * ratio_train)
+        else:
+            n_threshold_train = len(pd_data.loc[pd_data.datafqtr <= ratio_train])
+    else:
+        if '-' in ratio_train:
+            n_threshold_train = len(pd_data.loc[pd_data.rdq_p <= str(ratio_train)])
+        else:
+            n_threshold_train = len(pd_data.loc[pd_data.datafqtr <= ratio_train])
+
     pd_data_train = pd_data.iloc[:n_threshold_train].copy()
-    pd_data_dev = pd_data.iloc[n_threshold_train:(n_threshold_train + n_threshold_dev)].copy()
-    pd_data_test = pd.concat([pd_data.iloc[(n_threshold_train + n_threshold_dev):],
-                              pd_data_extra.loc[(pd_data_extra.num_p >= 3)]]).copy()
 
     regr_list = []
     dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
                       'aug_size': aug_size, 'aug_sigma': aug_sigma, 'std_adjust': std_adjust, 'lstm_units': lstm_units ,
-                      'lstm_epochs': epochs}
+                      'lstm_epochs': epochs, 'p_feature_train': p_feature_train, 'p_feature_decision': p_feature_decision,
+                      'coeff_fade': coeff_fade}
     if predict_method.lower() == 'sklearn':
         dict_transform, regr_list = get_model_sklearn(pd_data_train, dict_transform, n_estimators=n_estimators_list,
                                                       learning_rate=learning_rate_list, max_depth=max_depth, tree_method=tree_method,
@@ -673,164 +744,57 @@ if 'Training' == 'Training':
     else:
         raise ValueError('predict_method can only be in [lstm, sklearn]')
 
-    pd_data_train = e2e_pred_data(pd_data_train, dict_transform, regr_list, n_sigma=1.5)
-    pd_data_dev = e2e_pred_data(pd_data_dev, dict_transform, regr_list, n_sigma=1.5)
-    pd_data_test = e2e_pred_data(pd_data_test, dict_transform, regr_list, n_sigma=1.5)
+    _pd_data = e2e_pred_data(_pd_data.copy(), dict_transform, regr_list)
+    pd_data_show = _pd_data.loc[_pd_data.num_p >= 3].copy()
+    pd_data_extra_show = _pd_data.loc[(_pd_data.num_p < 3) | (_pd_data.num_p.isna())].copy()
 
-    metric_plot = 'log_growth_mc_pred_min'
-    #metric_plot = 'log_growth_mc_pred_median'
+    pd_data_train_show = pd_data_show.iloc[:n_threshold_train].copy()
+    time_max_train = pd_data_train_show.rdq_p.max()
+    n_years = round((pd.to_datetime(pd_data_show.rdq_p.max()) - pd.to_datetime(time_max_train)).days/365)
+    dict_pd_data = {}
+    for i_year in range(n_years - 1):
+        time_year_min = str(pd.to_datetime(time_max_train) + pd.to_timedelta(f'{365 * i_year} day'))[:10]
+        time_year_max = str(pd.to_datetime(time_max_train) + pd.to_timedelta(f'{365 * (i_year + 1)} day'))[:10]
+        pd_data_year_entry = pd_data_show.loc[(pd_data_show.rdq_p > time_year_min) & (pd_data_show.rdq_p <= time_year_max)]
+        dict_pd_data[f'{i_year + 1}_year'] = pd_data_year_entry
+    time_max_1_year = f'{int(time_max_train[:4]) + 1}{time_max_train[4:]}'
+    time_max_2_year = f'{int(time_max_train[:4]) + 2}{time_max_train[4:]}'
+    dict_pd_data['test_extra'] = pd_data_extra_show.loc[(pd_data_extra_show.num_p < 3)]
+
+    #metric_plot = 'log_growth_mc_pred_min'
+    metric_plot = 'log_growth_mc_pred_median'
     #metric_plot = 'log_growth_mc_pred_mean'
 
-    if 1 == 1:
-        def get_anova(pd_data, top_p=0.97):
+    def get_summary(dict_pd_data, top_p=0.97):
+        dict_sum = {'data_label': [], 'p_value': [], 'mean_all': [], 'mean_top': [], 'std_all': [], 'std_top': [],
+                    'num_all': [], 'num_top': [], 'profit_all': [], 'profit_top': [], 'time_min_buy': [], 'time_max_buy': [],
+                    'criteria': []}
+        for label in dict_pd_data:
+            pd_data = dict_pd_data[label]
             pd_top = pd_data.loc[pd_data[metric_plot] >= pd_data[metric_plot].quantile(top_p)]
             array_all, array_top = pd_data['log_growth_mc'], pd_top['log_growth_mc']
             p_value = round(scipy.stats.f_oneway(array_all, array_top).pvalue, 4)
-            return p_value
-    print(f'Dev set p_value: {get_anova(pd_data_dev, top_p=0.97)}')
-    print(f'Test set p_value: {get_anova(pd_data_test, top_p=0.97)}')
+            mean_all, mean_top = array_all.mean(), array_top.mean()
+            std_all, std_top = array_all.std(), array_top.std()
+            num_all, num_top = len(array_all), len(array_top)
+            dict_sum['data_label'].append(label)
+            dict_sum['p_value'].append(p_value)
+            dict_sum['mean_all'].append(mean_all)
+            dict_sum['mean_top'].append(mean_top)
+            dict_sum['std_all'].append(std_all)
+            dict_sum['std_top'].append(std_top)
+            dict_sum['num_all'].append(num_all)
+            dict_sum['num_top'].append(num_top)
+            dict_sum['profit_all'].append(round((10 ** array_all).mean() - 1, 4))
+            dict_sum['profit_top'].append(round((10 ** array_top).mean() - 1, 4))
+            dict_sum['time_min_buy'].append(pd_data.rdq_0.min())
+            dict_sum['time_max_buy'].append(pd_data.rdq_0.max())
+            dict_sum['criteria'].append(pd_top[metric_plot].min())
+        _pd_summary = pd.DataFrame(dict_sum)
+        return _pd_summary
 
-    thresholds = [0.03, 0.04, 0.05, 0.06, 0.07]
-    if 1 == 1:
-        val_min_threshold = 0.0
-        fig, ax = plt.subplots(2, 3, figsize=(18, 9))
-        for i_plot in range(2):
-            val_min = val_min_threshold if i_plot == 0 else -5
-            pd_data_train_plot = pd_data_train.loc[pd_data_train[metric_plot] >= val_min]
-            pd_data_dev_plot = pd_data_dev.loc[pd_data_dev[metric_plot] >= val_min]
-            pd_data_test_plot = pd_data_test.loc[pd_data_test[metric_plot] >= val_min]
-            ax[i_plot, 0].plot(pd_data_train_plot[metric_plot], pd_data_train_plot['log_growth_mc'], '.')
-            ax[i_plot, 0].set_xlabel('Predicted Growth mean min')
-            ax[i_plot, 0].set_ylabel('Actual Growth')
-            ax[i_plot, 0].set_title('Training set')
-
-            ax[i_plot, 1].plot(pd_data_dev_plot[metric_plot], pd_data_dev_plot['log_growth_mc'], '.')
-            ax[i_plot, 1].set_xlabel('Predicted Growth mean min')
-            ax[i_plot, 1].set_ylabel('Actual Growth')
-            ax[i_plot, 1].set_title('Dev set')
-
-            ax[i_plot, 2].plot(pd_data_test_plot[metric_plot], pd_data_test_plot['log_growth_mc'], '.')
-            ax[i_plot, 2].set_xlabel('Predicted Growth mean min')
-            ax[i_plot, 2].set_ylabel('Actual Growth')
-            ax[i_plot, 2].set_title('Testing set')
-
-        fig.tight_layout()
-
-        pd_regr_train = pd.DataFrame({'y': pd_data_train_plot['log_growth_mc'], 'num_p': pd_data_train_plot['num_p'],
-                                      'y_pred': pd_data_train_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
-        pd_regr_dev = pd.DataFrame({'y': pd_data_dev_plot['log_growth_mc'], 'num_p': pd_data_dev_plot['num_p'],
-                                    'y_pred': pd_data_dev_plot[metric_plot], 'rdq': pd_data_train_plot['rdq_0']})
-
-        n_fig = len(thresholds)
-        fig, ax = plt.subplots(2, n_fig, figsize=(18, 9))
-        ax = fig.axes
-        for j, dataset_type in enumerate(['Dev', 'Test']):
-            if dataset_type == 'Dev':
-                pd_dataset = pd_data_dev_plot
-            elif dataset_type == 'Test':
-                pd_dataset = pd_data_test_plot
-            pd_regr = pd.DataFrame({'y': pd_dataset['log_growth_mc'], 'num_p': pd_dataset['num_p'],
-                                    'y_pred': pd_dataset[metric_plot], 'rdq': pd_dataset['rdq_0']})
-            for i, threshold in enumerate(thresholds):
-                if i < (len(thresholds) - 1):
-                    pd_select = pd_regr.loc[(pd_regr.y_pred >= thresholds[i]) & (pd_regr.y_pred < thresholds[i + 1])]
-                    title = f'Between {thresholds[i]} and {thresholds[i + 1]} \n mean {round(pd_select.y.mean(), 3)}'
-                else:
-                    pd_select = pd_regr.loc[(pd_regr.y_pred >= thresholds[i])]
-                    title = f'> {threshold} \n mean {round(pd_select.y.mean(), 3)}'
-                bins = np.histogram(pd_select.y, bins=20)[1]
-                for num_p in list(pd_select.num_p.unique()):
-                    for direction in ['<', '>']:
-                        if direction == '<':
-                            pd_select_hist = pd_select.loc[(pd_select.num_p <= num_p) & (pd_select.rdq.str[:4] <= '2010')]
-                        else:
-                            pd_select_hist = pd_select.loc[(pd_select.num_p <= num_p) & (pd_select.rdq.str[:4] > '2010')]
-                        if len(pd_select_hist) > 0:
-                            ax[j * len(thresholds) + i].hist(pd_select_hist.y, bins=bins, label=f'{int(num_p)}-{direction}')
-                ax[j * len(thresholds) + i].set_title(f'{dataset_type}\n{title}')
-                if len(pd_select) > 0:
-                    ax[j * len(thresholds) + i].legend()
-        fig.tight_layout()
-
-if 1 == 0:
-    pd_data_exe = pd_data_ori.loc[pd_data_ori.num_p.isna()].copy()
-    # pd_data_exe = pd_data_exe.loc[((pd_data_exe.marketcap_0 / pd_data_exe.book_value_0) <= mc_book_ratio[1]) &
-    #                               ((pd_data_exe.marketcap_0 / pd_data_exe.book_value_0) >= mc_book_ratio[0])]
-    # pd_data_exe = pd_data_exe.loc[pd_data_exe.marketcap_0 >= marketcap_min].copy()
-    # pd_data_exe['rdq_0'] = pd.read_sql("select max(time) as time from price where symbol = 'AAPL'", con).iloc[0].time
-    pd_marketcap_exe_latest = stock_price.get_marketcap_latest(list(pd_data_exe.symbol))[['symbol', 'marketcap_latest']]
-    merge_cols = ['symbol']
-    pd_marketcap_current_exe_1 = pd_data_exe[merge_cols].merge(pd_marketcap_exe_latest, on=merge_cols, how='left')
-    pd_data_exe['marketcap_0'] = list(pd_marketcap_current_exe_1['marketcap_latest'])
-
-    log_grow_pred_exe_mean, log_grow_pred_exe_std = get_prediction(pd_data_exe, dict_transform, regr_list_global)
-    pd_data_exe['log_growth_mc_pred_mean'] = log_grow_pred_exe_mean
-    pd_data_exe['log_growth_mc_pred_std'] = log_grow_pred_exe_std
-    pd_data_exe['log_growth_mc_pred_min'] = log_grow_pred_exe_mean - log_grow_pred_exe_std * 2
-    head_keys = ['symbol', 'datafqtr', 'log_growth_mc_pred_min', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
-    pd_data_exe = pd_data_exe[head_keys + [i for i in pd_data_exe.columns if i not in head_keys]]
-
-    pd_data_exe = pd_data_exe.sort_values('log_growth_mc_pred_min', ascending=False).copy()
-    pd_data_exe.index = np.arange(len(pd_data_exe))
-
-    budget = 10211
-    leverage = 0.99
-    metric_min = 0.03
-    n_stocks_max = 7
-
-    pd_data_exe_view = pd_data_exe.loc[pd_data_exe.log_growth_mc_pred_min >= metric_min].head(n_stocks_max)
-    n_stocks = len(pd_data_exe_view)
-    pd_prices = stock_price.get_price_latest(list(pd_data_exe.symbol.unique()))
-    pd_allocate = pd_prices[['symbol', 'adjclose']].copy()
-    _budget = budget * leverage / n_stocks
-    pd_allocate['num'] = (_budget / pd_allocate['adjclose']).astype(int)
-    pd_allocate = pd_data_exe_view[['symbol', 'log_growth_mc_pred_min', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std',
-                                    'marketcap_0']].merge(pd_allocate, on='symbol', how='inner')
-    pd_allocate = pd_allocate.sort_values('log_growth_mc_pred_min', ascending=False)
-    margin_rate = budget / (pd_allocate['num'] * pd_allocate['adjclose']).sum()
-
-    symbols_last = ['BOMN', 'SHOP', 'SQ', 'SPWH', 'CHGG', 'EVBG', 'DXCM']
-    pd_data_exe_last = pd_data_exe.loc[pd_data_exe.symbol.isin(symbols_last)]
-
-if 1 == 0:
-    import numpy as np
-
-    a = np.asarray([0.1, -0.1, 0.15, 0.16, 0.2, 0.15, 0.13])
-    b1, b2 = round(10 ** (a.mean()), 5), round((10 ** a).mean(), 5)
-    c1, c2 = round(np.log10(b1), 5), round(np.log10(b2), 5)
-    print(b1, b2)
-    print(c1, c2)
-
-if 1 == 0:
-    pd_data = pd_data_ori.copy()
-    key_head_list = ['rank', 'symbol', 'rdq', 'datafqtr', 'quarter']
-    cols = key_head_list + sorted([i for i in list(pd_data.columns) if i not in key_head_list])
-    pd_data['quarter'] = pd_data['rdq'].str[:4].astype(int) + ((pd_data['rdq'].str[5:7].astype(int) - 1) // 3) / 4
-
-    pd_data = pd_data[cols]
-
-    pd_price = stock_price.get_price_pd_query(pd_data[['symbol', 'rdq']])
-    pd_price_latest = stock_price.get_price_latest(list(pd_data['symbol']))
-
-    pd_select = pd_data.loc[(pd_data.quarter >= 2000) & (pd_data.quarter <= 2003)]
-    # pd_data['rdq'] = pd.to_datetime(pd_data['rdq'])
-
-    pd_size = pd_data.groupby('quarter').size().rename('num').reset_index()
-    fig, ax = plt.subplots(1, 1, figsize=(7, 6))
-    ax = fig.axes
-    ax[0].plot(pd_size.quarter, pd_size.num, '.-')
-
-if 1 == 0:
-    # stock_price = StockPrice()
-    pd_data = pd_data_ori.copy()
-    pd_price = stock_price.get_price_pd_query(pd_data_ori)
-
-    pd_price = pd_price.rename(columns={'time': 'time_price', 'time_request': 'rdq', 'close': 'price'})
-    pd_data = pd_data.merge(pd_price, on=['symbol', 'rdq'], how='inner')
-    pd_data['market_cap'] = pd_data['shares'] * pd_data['price']
-
-    key_head_list = ['rank', 'symbol', 'rdq', 'datafqtr', 'time_price', 'price', 'market_cap', 'shares']
-    cols = key_head_list + sorted([i for i in list(pd_data.columns) if i not in key_head_list])
-    pd_data = pd_data[cols]
+    top_p = 0.90
+    pd_summary = get_summary(dict_pd_data, top_p=top_p)
+    print(pd_summary)
 
 # con.close()
