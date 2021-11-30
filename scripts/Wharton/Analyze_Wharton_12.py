@@ -29,7 +29,7 @@ try:
 except:
     con = sqlite3.connect(path_fr_db)
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
 
     n_year_x = 3
 
@@ -1261,7 +1261,7 @@ if 'Define Function' == 'Define Function':
 
         return pd_fr_record, pd_holding, dict_transform_save
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
 
     #################################################
     # training hyperparameters
