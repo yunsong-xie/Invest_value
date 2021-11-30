@@ -29,7 +29,7 @@ try:
 except:
     con = sqlite3.connect(path_fr_db)
 
-if __name__ == '__main__0':
+if __name__ == '__main__':
 
     n_year_x = 3
 
