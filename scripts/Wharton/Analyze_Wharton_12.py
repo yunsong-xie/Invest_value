@@ -29,7 +29,7 @@ try:
 except:
     con = sqlite3.connect(path_fr_db)
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
 
     n_year_x = 3
 
@@ -461,10 +461,10 @@ if 'Define Function' == 'Define Function':
             p_feature = None
         else:
             raise ValueError('datatype has to be in [training, evaluation, investing]')
-
+        pd_mdata = pd_data[['datatype']].copy()
         if p_feature:
             time_col = f'rdq_{p_feature.split("_")[-1]}'
-            pd_mdata = pd_data[[time_col]].copy()
+            pd_mdata[time_col] = pd_data[time_col]
             if (coeff_fade > 0) & (coeff_fade <= 1):
                 pd_mdata['weight'] = coeff_fade ** (np.abs(pd.to_datetime(pd_mdata[time_col]) -
                                                            pd.to_datetime(pd_mdata[time_col]).max()).dt.days / 365)
@@ -473,20 +473,21 @@ if 'Define Function' == 'Define Function':
             pd_mdata['mc_growth'] = pd_data[p_feature] / pd_data['marketcap_0']
             pd_mdata['mc_growth_log'] = list(np.log10(pd_mdata['mc_growth']))
             pd_mdata['mc_growth_log_squred'] = list(pd_mdata['mc_growth_log'] ** 2)
-        else:
-            pd_mdata = pd_data[[]].copy()
+
 
         features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_growth = ['book_value', 'revenue']
+        features_add = ['num', 'num_p', 'revenue_0_growth_quantile', 'book_value_0_growth_quantile']
         mc_bv_years = 3
         for mc_bv_year in range(mc_bv_years):
             pd_mdata[f'mc_bv_{mc_bv_year}'] = list(pd_data[f'marketcap_{mc_bv_year}'] / pd_data[f'book_value_{mc_bv_year}'])
         pd_mdata['mc_bv_q1'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_q1'])
         pd_mdata['mc_bv_q4'] = list(pd_data[f'marketcap_0'] / pd_data[f'book_value_1'])
-        pd_mdata['num'] = pd_data['num']
-        pd_mdata['num_p'] = pd_data['num_p']
+        for feature in features_add:
+            pd_mdata[feature] = pd_data[feature]
 
-        features_x = [i for i in pd_mdata.columns if 'mc_bv' in i] + ['num_p']
+        features_x = [i for i in pd_mdata.columns if 'mc_bv' in i] + [i for i in features_add if i != 'num']
+
 
         for feature in features_growth:
             for i_year in range(n_year_x - 1):
@@ -543,17 +544,17 @@ if 'Define Function' == 'Define Function':
 
         return x_train, y_train, dict_transform
 
-    def get_model_sklearn(pd_train, dict_transform):
+    def get_model_sklearn(pd_train, pd_pseudo, dict_transform):
 
-        pd_data = pd_train
+        pd_data = pd.concat([pd_train, pd_pseudo])
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
-        aug_sigma_train = dict_transform['aug_sigma_train']
+        bool_pseudo = dict_transform['bool_pseudo']
 
         pd_mdata, features_x = prepare_features(pd_data, dict_transform, data_type='training')
 
         features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_growth = ['book_value', 'revenue']
-        features_x_select = ['mc_bv_0', 'mc_bv_1', 'num_p']
+        features_x_select = ['mc_bv_0', 'mc_bv_1', 'num_p', 'revenue_0_growth_quantile', 'book_value_0_growth_quantile']
 
         features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_bvr_quarter = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
@@ -565,9 +566,9 @@ if 'Define Function' == 'Define Function':
             # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
             # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i)]
             if 'year' in features_growth_time_label:
-                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q' not in i) & ('0' in i)]
+                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('quantile' not in i) & ('q' not in i) & ('0' in i)]
             if 'quarter' in features_growth_time_label:
-                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q' in i) & ('0' in i)]
+                features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('quantile' not in i) & ('q' in i) & ('0' in i)]
         for _ in features_bvr_year:
             features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & ('q' not in i) & ('0' in i)]
         for _ in features_bvr_quarter:
@@ -589,21 +590,25 @@ if 'Define Function' == 'Define Function':
                 col = (col - mean) / std / dict_transform['std_adjust']
                 pd_mdata[feature] = col
 
-        pd_mdata_cal = pd_mdata
-
-        if dict_transform['aug_size_train'] > 0:
+        def add_aug_data(pd_mdata, dict_transform, datatype):
+            pd_mdata_cal = pd_mdata.loc[pd_mdata.datatype == datatype]
+            aug_size, aug_sigma = dict_transform[f'aug_size_{datatype}'], dict_transform[f'aug_sigma_{datatype}']
             n_extra = aug_size_train * len(pd_mdata_cal)
-            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(dict_transform['aug_size_train'], )))])
+            pd_mdata_cal_aug = pd.concat([pd_mdata_cal for _ in range(int(np.ceil(aug_size)))])
             pd_mdata_cal_aug = pd_mdata_cal_aug.iloc[:n_extra].copy()
             for feature in features_x:
                 if feature not in dict_transform['features_exempt']:
-                    coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma_train / dict_transform['std_adjust']
+                    coeff = np.random.randn(len(pd_mdata_cal_aug)) * aug_sigma / dict_transform['std_adjust']
                     pd_mdata_cal_aug[feature] = pd_mdata_cal_aug[feature] + coeff
             pd_mdata_cal = pd.concat([pd_mdata_cal, pd_mdata_cal_aug])
+            return pd_mdata_cal
 
-        x_train, y_train_ori = pd_mdata_cal[features_x_select].values, pd_mdata_cal['mc_growth_log'].values
+        pd_mdata_cal_train = add_aug_data(pd_mdata, dict_transform, datatype='train')
+        pd_mdata_cal_pseudo = add_aug_data(pd_mdata, dict_transform, datatype='pseudo')
+        x_train, y_train_ori = pd_mdata_cal_train[features_x_select].values, pd_mdata_cal_train['mc_growth_log'].values
+        x_pseudo = pd_mdata_cal_pseudo[features_x_select].values
         y_train, y_median, y_std = y_transform(y_train_ori, 'encode', func_shift, func_power, dict_transform)
-        weight_train = pd_mdata_cal['weight'].values
+        weight_train, weight_pseudo = pd_mdata_cal_train['weight'].values, pd_mdata_cal_pseudo['weight'].values
         dict_transform['y_median'] = y_median
         dict_transform['y_std'] = y_std
 
@@ -621,7 +626,7 @@ if 'Define Function' == 'Define Function':
             for i_thread in range(n_threads):
                 pd_estimator_thread = pd_estimator.iloc[i_thread: (i_thread + len(pd_estimator) // n_threads)]
                 mp.Process(target=sklearn_training_thread, args=(pd_estimator_thread, x_train, y_train, weight_train,
-                                                                 dict_regr_parameter, mp_queue)).start()
+                                                                 x_pseudo, weight_pseudo, bool_pseudo, dict_regr_parameter, mp_queue)).start()
 
             return_count, regr_list, time_start = 0, [], time.time()
 
@@ -636,13 +641,15 @@ if 'Define Function' == 'Define Function':
                     raise ChildProcessError('Something went wrong')
         else:
             pd_estimator_thread = pd_estimator
-            regr_list = sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train, dict_regr_parameter)
+            regr_list = sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train,
+                                                x_pseudo, weight_pseudo, bool_pseudo, dict_regr_parameter)
 
         dict_transform['features_x'] = features_x
         dict_transform['features_x_select'] = features_x_select
         return dict_transform, regr_list
 
-    def sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train, dict_regr_parameter, mp_queue=None):
+    def sklearn_training_thread(pd_estimator_thread, x_train, y_train, weight_train, x_pseudo, weight_pseudo,
+                                bool_pseudo, dict_regr_parameter, mp_queue=None):
 
         max_depth, tree_method = dict_regr_parameter['max_depth'], dict_regr_parameter['tree_method']
         predictor = dict_regr_parameter['predictor']
@@ -654,18 +661,34 @@ if 'Define Function' == 'Define Function':
         for i_regr in range(len(pd_estimator_thread)):
             n_estimators = int(pd_estimator_thread.iloc[i_regr]['estimator'])
             learning_rate = pd_estimator_thread.iloc[i_regr]['learning_rate']
-            state = int(pd_estimator_thread.iloc[i_regr]['state'])
-            if dict_transform['regr_type'] == 'GB':
-                regr = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
-                                            predictor=predictor, tree_method=tree_method, random_state=state)
-            elif dict_transform['regr_type'] == 'RF':
-                regr = xgboost.XGBRFRegressor(n_estimators=n_estimators, num_parallel_tree=n_estimators, subsample=subsample,
-                                              max_depth=max_depth, learning_rate=learning_rate, booster=booster,
-                                              predictor=predictor, random_state=state, n_jobs=6)
+            state1 = int(pd_estimator_thread.iloc[i_regr]['state'])
+            state2 = state1 + np.random.randint(99999)
+            if dict_transform['regr_type'] == 'xgboost_GB':
+                regr1 = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
+                                              predictor=predictor, tree_method=tree_method, random_state=state1)
+                regr2 = xgboost.XGBRegressor(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate,
+                                              predictor=predictor, tree_method=tree_method, random_state=state2)
+            elif dict_transform['regr_type'] == 'xgboost_RF':
+                regr1 = xgboost.XGBRFRegressor(n_estimators=n_estimators, subsample=subsample, max_depth=max_depth, booster=booster,
+                                               learning_rate=learning_rate, predictor=predictor, random_state=state1, n_jobs=-1)
+                regr2 = xgboost.XGBRFRegressor(n_estimators=n_estimators, subsample=subsample, max_depth=max_depth, booster=booster,
+                                               learning_rate=learning_rate, predictor=predictor, random_state=state2, n_jobs=-1)
+            elif dict_transform['regr_type'] == 'sklearn_RF':
+                regr1 = RandomForestRegressor(n_estimators=n_estimators, max_samples=subsample, max_depth=max_depth, random_state=state1,
+                                              n_jobs=-1)
+                regr2 = RandomForestRegressor(n_estimators=n_estimators, max_samples=subsample, max_depth=max_depth, random_state=state2,
+                                              n_jobs=-1)
             else:
                 raise KeyError('regr_type can only be [GB, RF]')
-            regr.fit(x_train, y_train, sample_weight=weight_train)
-            regr_list.append(regr)
+            regr1.fit(x_train, y_train, sample_weight=weight_train)
+            if bool_pseudo:
+                y_pseudo = regr1.predict(x_pseudo)
+                x_final, y_final = np.concatenate([x_train, x_pseudo]), np.concatenate([y_train, y_pseudo])
+                weight_final = np.concatenate([weight_train, weight_pseudo])
+                regr2.fit(x_final, y_final, sample_weight=weight_final)
+                regr_list.append(regr2)
+            else:
+                regr_list.append(regr1)
 
             time_span = round(time.time() - time_start, 1)
             print(f'\rCompleted regression {i_regr + 1}/{len(pd_estimator_thread)} - Time {time_span} s', end='')
@@ -686,8 +709,8 @@ if 'Define Function' == 'Define Function':
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
         pd_mdata, features_x = prepare_features(pd_data, dict_transform, data_type='investing')
 
-        for feature in dict_transform['mean']:
-            ind_neg = pd_mdata[feature] < 0
+        for feature in [i for i in dict_transform['mean'] if i in pd_mdata.columns]:
+            ind_neg = pd_mdata[feature] <= 0
             if any(ind_neg):
                 pd_mdata.loc[ind_neg, feature] = pd_mdata.loc[pd_mdata[feature] > 0, feature].min()
             col = np.log10(pd_mdata[feature].values)
@@ -695,6 +718,7 @@ if 'Define Function' == 'Define Function':
             col = (col - mean) / std / dict_transform['std_adjust']
             pd_mdata[feature] = col
 
+        pd_mdata[features_x] = pd_mdata[features_x].fillna(0)
         X_cal = pd_mdata[features_x].values
 
         # y_ori = pd_mdata['mc_growth_log'].values
@@ -782,7 +806,77 @@ if 'Define Function' == 'Define Function':
             _pd_holding_record = _pd_holding_record[keys + ['value']]
         return _pd_holding_record
 
-    def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, dict_transform, dict_transform_save=None):
+    def add_quantile_info(pd_base, ratio_stock_select, ratio_stock_select_span_year):
+        np_data = pd_base[['rdq_0', 'revenue_0_growth', 'book_value_0_growth'] + ['marketcap_0'] * 5].values
+        np_data[:, 0] = pd.to_datetime(np_data[:, 0])
+        np_data[:, [1, 2]] = np_data[:, [1, 2]].astype(float).round(5)
+        np_data[:, 3], np_data[:, 4], dtime = np.nan, np.nan, pd.to_timedelta(f'{int(366 * ratio_stock_select_span_year)} days')
+        ind_array = np.arange(len(np_data))
+        for rdq_0 in sorted(sorted(np.unique(np_data[:, 0]))):
+            rdq_1 = rdq_0 - dtime
+            _ind_cal = (np_data[:, 0] >= rdq_1) & (np_data[:, 0] <= rdq_0)
+            _ind_assign = np_data[:, 0] == rdq_0
+            np_data[_ind_assign, 3] = round(np.quantile(np_data[_ind_cal, 1], 1 - ratio_stock_select), 6)
+            np_data[_ind_assign, 4] = round(np.quantile(np_data[_ind_cal, 2], 1 - ratio_stock_select), 6)
+            np_data[_ind_assign, 5] = sum(_ind_cal)
+            for _ind in ind_array[_ind_assign]:
+                quantile_revenue = sum(np_data[_ind, 1] >= np_data[_ind_cal, 1])
+                np_data[_ind, 6] = int(round(quantile_revenue / np_data[_ind, 5] * 100))
+                revenue_revenue = sum(np_data[_ind, 2] >= np_data[_ind_cal, 2])
+                np_data[_ind, 7] = int(round(revenue_revenue / np_data[_ind, 5] * 100))
+        pd_base['revenue_0_growth_threshold'] = np_data[:, 3].astype(float)
+        pd_base['book_value_0_growth_threshold'] = np_data[:, 4].astype(float)
+        pd_base['revenue_0_growth_quantile'] = np_data[:, 6].astype(float)
+        pd_base['book_value_0_growth_quantile'] = np_data[:, 7].astype(float)
+        pd_base['num_growth'] = np_data[:, 5].astype(float)
+        keys = list(pd_base.keys())
+        ind_end = keys.index('book_value_0_growth')
+        new_keys = keys[ind_end+1:]
+
+        return pd_base, new_keys
+
+    def prepare_pd_data_operate(pd_base, _pd_data, new_keys_growth):
+        _rank_array_4 = np.asarray(pd_base['rank'])
+        dict_rank_array = {i: set(_rank_array_4 - i + 4) for i in (np.arange(4) + 1)}
+        _rank_array_pool, pd_data_list = set(), []
+        for i in sorted(dict_rank_array, reverse=True):
+            if i == 4:
+                _rank_array_pool.update(dict_rank_array[i])
+            else:
+                dict_rank_array[i] = dict_rank_array[i] - _rank_array_pool
+                _rank_array_pool = _rank_array_pool.union(set(dict_rank_array[i]))
+            pd_data_entry = _pd_data.loc[_pd_data['rank'].isin(dict_rank_array[i])].copy()
+            pd_data_entry['num_valid'] = i / 4
+            # num_valid represents which growing state is the stock is in,
+            # 1 means it meets the standard of full growth last quarter
+            # 0.25 means it has not meet the standard for 3 quarters
+
+            if i == 4:
+                pd_data_entry['status'] = 'valid'
+            else:
+                pd_data_entry['status'] = None
+            pd_data_list.append(pd_data_entry)
+        pd_data_operate = pd.concat(pd_data_list).sort_values(by=['rdq_0', 'symbol']).copy()
+        pd_data_operate['year'] = pd_data_operate['rdq_0'].str[:4].astype(int)
+        head_keys = ['symbol', 'datafqtr', 'num_valid', 'year']
+        pd_data_operate = pd_data_operate[head_keys + [i for i in pd_data_operate.columns if i not in head_keys]]
+
+        pd_temp = pd_base[['rank'] + new_keys_growth].copy()
+        pd_temp_list = []
+        for i in range(4):
+            pd_temp_1 = pd_temp.copy()
+            pd_temp_1['rank_ori'] = pd_temp_1['rank']
+            pd_temp_1['rank'] = pd_temp_1['rank'] + i
+            pd_temp_list.append(pd_temp_1)
+        pd_temp_2 = pd.concat(pd_temp_list)
+        pd_temp_3 = pd_temp_2.groupby('rank')['rank_ori'].min().reset_index()
+        pd_base_right = pd_temp.rename(columns={'rank': 'rank_ori'}).merge(pd_temp_3, on='rank_ori', how='right')
+        pd_base_right = pd_base_right[[i for i in pd_base_right.columns if i != 'rank_ori']]
+
+        pd_data_operate = pd_data_operate.merge(pd_base_right, on='rank', how='inner')
+        return pd_data_operate
+
+    def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, dict_transform):
 
         if 'define parameters' == 'define parameters':
             decision_time_final = dict_decision_time['start']
@@ -863,16 +957,18 @@ if 'Define Function' == 'Define Function':
             keys_pre = head_keys + [i for i in pd_data_eval.columns if i not in head_keys]
             pd_data_eval = pd_data_eval[[i for i in keys_pre if i in pd_data_eval.columns]]
 
-            pd_train = prepage_training_data(pd_data_train)
-            pd_train = pd_train.loc[pd_train.num_p >= training_num_p_min]
+            pd_train_pseudo = prepage_training_data(pd_data_train)
+            pd_train = pd_train_pseudo.loc[pd_train_pseudo.num_p >= training_num_p_min]
+            pd_pseudo = pd_train_pseudo.loc[(pd_train_pseudo.num_p < training_num_p_min) & (pd_train_pseudo.num_valid >= training_num_p_min)].copy()
+            pd_pseudo['datatype'] = 'pseudo'
 
         bool_operature = len(pd_data_eval) > 0
         pd_data_eval_operation = []
-        if ('prediction' == 'prediction') & bool_operature:
+        if not (('prediction' == 'prediction') & bool_operature):
+            regr_list = []
+        else:
             if predict_method.lower() == 'sklearn':
-                dict_transform, regr_list = get_model_sklearn(pd_train, dict_transform)
-            elif predict_method.lower() == 'lstm':
-                dict_transform, regr_list = get_model_lstm(pd_train, dict_transform)
+                dict_transform, regr_list = get_model_sklearn(pd_train, pd_pseudo, dict_transform)
             else:
                 raise ValueError('predict_method can only be in [lstm, sklearn]')
 
@@ -1100,7 +1196,7 @@ if 'Define Function' == 'Define Function':
                 # too many stock is being held, no purchase to be executed
                 return pd_fr_record, pd_holding
 
-            if (pd_entry is not None) & (operate_type == 'buy'):
+            if (pd_entry is not None) & (operate_type in ['buy', 'buy_replace']):
                 symbol = pd_entry['symbol']
                 if symbol in list(pd_holding.symbol):
                     pd_fr_record, pd_holding = _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, 0, 'refresh', pd_entry)
@@ -1164,10 +1260,10 @@ if 'Define Function' == 'Define Function':
 
             return pd_fr_record, pd_holding
 
-        def swap_share(pd_fr_record, pd_holding, symbol_hold, symbol_new, rdq_buy):
+        def swap_share(pd_fr_record, pd_holding, pd_entry, symbol_hold, symbol_new, rdq_buy):
             pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol_hold, rdq_buy, 'sell_replace')
             value_buy_force = pd_fr_record.iloc[-1]['c_return']
-            pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, symbol_new, rdq_buy, 'buy_replace', value_buy_force)
+            pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, pd_entry, rdq_buy, 'buy_replace', value_buy_force)
             return pd_fr_record, pd_holding
 
         for i in range(len(pd_data_eval_operation)):
@@ -1207,7 +1303,7 @@ if 'Define Function' == 'Define Function':
             elif operate_type == 'buy':
                 eval_metric_value = pd_entry[eval_metric]
                 rdq_buy = pd_entry['rdq_0']
-                eval_metric_threshold = dict_pd_train_eval[pd_entry.num_p][eval_metric].quantile(1 - ratio_threshold_buy)
+                eval_metric_threshold = dict_pd_train_eval[pd_entry.num_p][eval_metric].quantile(ratio_threshold_buy)
                 _bool_buy = False
                 if eval_metric_value >= eval_metric_threshold:
                     if symbol in list(pd_holding.symbol):
@@ -1238,7 +1334,7 @@ if 'Define Function' == 'Define Function':
                                 _ind = pd_holding.symbol == symbol_hold
                                 symbol_new = pd_entry['symbol']
                                 # pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol_hold, rdq_buy, 'replace')
-                                pd_fr_record, pd_holding = swap_share(pd_fr_record, pd_holding, symbol_hold, symbol_new, rdq_buy)
+                                pd_fr_record, pd_holding = swap_share(pd_fr_record, pd_holding, pd_entry, symbol_hold, symbol_new, rdq_buy)
                 if _bool_buy:
                     pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, pd_entry, rdq_b=pd_entry['rdq_0'], operate_type='buy')
                     _ind = (pd_data_eval_operation.datatype == 'sell_blind') & (pd_data_eval_operation.symbol == symbol)
@@ -1265,29 +1361,26 @@ if __name__ == '__main__':
 
     #################################################
     # training hyperparameters
-    predict_method = 'sklearn'
-    dict_revenue_growth_min = {'1': 0.0, '0': 0.3}
-    dict_book_value_growth_min = {'1': 0.0, '0': 0.3}
-    dict_revenue_growth_max = {}
-    dict_book_value_growth_max = {}
-    mc_book_ratio = [2.5, 65]
-    mc_revenue_ratio = [2.5, 65]
+    dict_revenue_growth_min_soft, dict_book_value_growth_min_soft = {'1': 0.0, '0': 0.3}, {'1': 0.0, '0': 0.3}
+    dict_revenue_growth_min, dict_book_value_growth_min = {'1': 0.0, '0': 0.3}, {'1': 0.0, '0': 0.3}
+    ratio_stock_select, ratio_stock_select_span_year = 0.0, 1
+    mc_book_ratio, mc_revenue_ratio = [2.5, 65], [2.5, 65]
     evaluate_span_month, replace_span_month = 3, 3
-    bool_replace = False
+    bool_replace = True
     coeff_fade = 0.9
     func_shift, func_power, std_adjust = 2, 2, 2
-    features_exempt = ['num', 'num_p']
-    n_threads = 1
-    regr_type = 'RF'
-    n_estimators_min, n_estimators_max = 350, 450
-    learning_rate_min, learning_rate_max = 0.85, 1
-    max_depth = 5
-    booster, subsample = 'gbtree', 0.85
+    features_exempt = ['num', 'num_p', 'revenue_0_growth_quantile', 'book_value_0_growth_quantile']
+    n_threads, regr_type, predict_method = 1, 'sklearn_RF', 'sklearn'
+    n_estimators_min, n_estimators_max = 70, 80
+    learning_rate_min, learning_rate_max = 1, 1
+    max_depth, booster, subsample = 5, 'gbtree', 0.85
     training_num_p_min = 0.75
     _decision_time_start, _decision_time_end = '2005-01-01', '2021-12-31'
-    n_trials = 10
-    n_regr = 10
+    bool_pseudo = True
+    n_trials = 1
+    n_regr = 7
     aug_size_train, aug_sigma_train = 20, 0.1
+    aug_size_pseudo, aug_sigma_pseudo = 4, 0.0
 
     #################################################
     # execution hyper-parameters
@@ -1297,7 +1390,7 @@ if __name__ == '__main__':
     ratio_threshold_sell = -0.5
     sell_type = 'rate'  # ratio, rate or none
     buy_num_p_min, sell_num_p_min = 0.25, 0.25
-    ratio_threshold_buy = 0.35
+    ratio_threshold_buy = 0.65
     ratio_margin, bool_rebalance, ratio_max_hold = 0.1, True, 0.5
     n_stocks = 4
     aug_size_pred, aug_sigma_pred = 20, 0.1
@@ -1308,18 +1401,18 @@ if __name__ == '__main__':
     marketcap_min, n_year_x = 100, 3
     margin_interest, capital_gain_interest = 0.08, 0.2
     tree_method, predictor = 'gpu_hist', 'gpu_predictor'
-    n_estimators_list = np.linspace(n_estimators_min, n_estimators_max, n_regr).astype(int)
-    learning_rates = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
-    n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
-    learning_rates = list(learning_rates) + list(learning_rates)[::-1]
+    n_estimators_list = (np.random.random(n_regr) * (n_estimators_max - n_estimators_min + 1) + n_estimators_min).astype(int)
+    learning_rates = (np.random.random(n_regr) * (learning_rate_max - learning_rate_min + 1) + learning_rate_min).astype(int)
     _ = min(len(n_estimators_list), len(learning_rates))
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rates[:_]
 
     dict_transform = {'mean': {}, 'std': {}, 'n_year_x': n_year_x, 'func_shift': func_shift, 'func_power': func_power,
+                      'ratio_stock_select': ratio_stock_select, 'ratio_stock_select_span_year': ratio_stock_select_span_year,
                       'aug_size_train': aug_size_train, 'aug_sigma_train': aug_sigma_train, 'aug_size_pred': aug_size_pred,
                       'aug_sigma_pred': aug_sigma_pred, 'std_adjust': std_adjust, 'coeff_fade': coeff_fade, 'features_exempt': features_exempt,
                       'n_estimators_list': n_estimators_list, 'learning_rates': learning_rates, 'max_depth': max_depth,
                       'tree_method': tree_method, 'predictor': predictor, 'eval_metric': eval_metric,
+                      'aug_size_pseudo': aug_size_pseudo, 'aug_sigma_pseudo': aug_sigma_pseudo, 'bool_pseudo': bool_pseudo,
                       'rate_depreciation': rate_depreciation, 'rate_step_switch': rate_step_switch, 'n_stocks': n_stocks,
                       'ratio_threshold_sell': ratio_threshold_sell, 'ratio_threshold_buy': ratio_threshold_buy, 'n_threads': n_threads,
                       'regr_type': regr_type, 'booster': booster, 'subsample': subsample, 'ratio_margin': ratio_margin,
@@ -1333,7 +1426,9 @@ if __name__ == '__main__':
 
     _pd_data = pd_data_ori.copy()
     # Get rid of the data entires should be pre-filtered
-    _pd_data = _pd_data.loc[~((_pd_data.marketcap_pq4.isna()) & (_pd_data.rdq_0 < common_func.date(-400)))]
+    _pd_data = _pd_data.loc[~((_pd_data.marketcap_pq4.isna()) & (_pd_data.rdq_0 < common_func.date(-400)))].copy()
+    _pd_data['quarter'] = _pd_data['rdq_q0'].str[:4].astype(int) + ((_pd_data['rdq_q0'].str[5:7].astype(int) - 1) // 3) / 4
+
     pd_base = _pd_data
     for i_year in np.arange(4) + 1:
         ind_large = pd_base[f'marketcap_pq{i_year}'] / pd_base[f'marketcap_0'] > 100
@@ -1344,9 +1439,13 @@ if __name__ == '__main__':
             pd_base.loc[ind_small, f'marketcap_pq{i_year}'] = pd_base.loc[ind_small][f'marketcap_0'] * 0.01
 
     for i in dict_revenue_growth_min:
-        pd_base = pd_base.loc[(pd_base[f'revenue_{i}'] / pd_base[f'revenue_{int(i) + 1}']) > (1 + dict_revenue_growth_min[i])]
-    for i in dict_book_value_growth_min:
-        pd_base = pd_base.loc[(pd_base[f'book_value_{i}'] / pd_base[f'book_value_{int(i) + 1}']) > (1 + dict_book_value_growth_min[i])]
+        pd_base[f'revenue_{i}_growth'] = pd_base[f'revenue_{i}'] / pd_base[f'revenue_{int(i) + 1}'] - 1
+        pd_base[f'book_value_{i}_growth'] = pd_base[f'book_value_{i}'] / pd_base[f'book_value_{int(i) + 1}'] - 1
+    for i in dict_revenue_growth_min:
+        pd_base = pd_base.loc[pd_base[f'revenue_{i}_growth'] >= dict_revenue_growth_min[i]]
+        pd_base = pd_base.loc[pd_base[f'book_value_{i}_growth'] >= dict_book_value_growth_min[i]]
+    #pd_base = pd_base.loc[pd_base[f'book_value_0_growth'] >= pd_base[f'book_value_1_growth']]
+    #pd_base = pd_base.loc[pd_base[f'revenue_0_growth'] >= pd_base[f'revenue_1_growth']]
     # _pd_data = _pd_data.loc[(_pd_data[f'revenue_q0'] / _pd_data[f'revenue_q4']) >= (_pd_data[f'revenue_1'] / _pd_data[f'revenue_2'])]
     # _pd_data = _pd_data.loc[(_pd_data[f'book_value_q0'] / _pd_data[f'book_value_q4']) >=
     #                         (_pd_data[f'book_value_1'] / _pd_data[f'book_value_2'])]
@@ -1358,32 +1457,16 @@ if __name__ == '__main__':
                           ((pd_base.marketcap_0 / pd_base.revenue_0) >= mc_revenue_ratio[0])]
     pd_base = pd_base.loc[pd_base.marketcap_0 >= marketcap_min]
     pd_base = pd_base.loc[pd_base.status == 'valid'].copy()
+    pd_base, new_keys_growth = add_quantile_info(pd_base, ratio_stock_select, ratio_stock_select_span_year)
+    pd_base_1 = pd_base.loc[(pd_base.revenue_0_growth_quantile >= ratio_stock_select * 100) &
+                            (pd_base.book_value_0_growth_quantile >= ratio_stock_select * 100)]
+    pd_base_2 = pd_base.copy()
+    for i in dict_revenue_growth_min_soft:
+        pd_base_2 = pd_base_2.loc[pd_base_2[f'revenue_{i}_growth'] >= dict_revenue_growth_min_soft[i]]
+        pd_base_2 = pd_base_2.loc[pd_base_2[f'book_value_{i}_growth'] >= dict_book_value_growth_min_soft[i]]
+    pd_base = pd.concat([pd_base_1, pd_base_2]).drop_duplicates()
 
-    _rank_array_4 = np.asarray(pd_base['rank'])
-    dict_rank_array = {i: set(_rank_array_4 - i + 4) for i in (np.arange(4) + 1)}
-    _rank_array_pool, pd_data_list = set(), []
-    for i in sorted(dict_rank_array, reverse=True):
-        if i == 4:
-            _rank_array_pool.update(dict_rank_array[i])
-        else:
-            dict_rank_array[i] = dict_rank_array[i] - _rank_array_pool
-            _rank_array_pool = _rank_array_pool.union(set(dict_rank_array[i]))
-        pd_data_entry = _pd_data.loc[_pd_data['rank'].isin(dict_rank_array[i])].copy()
-        pd_data_entry['num_valid'] = i / 4
-        # num_valid represents which growing state is the stock is in,
-        # 1 means it meets the standard of full growth last quarter
-        # 0.25 means it has not meet the standard for 3 quarters
-
-        if i == 4:
-            pd_data_entry['status'] = 'valid'
-        else:
-            pd_data_entry['status'] = None
-        pd_data_list.append(pd_data_entry)
-    pd_data_operate = pd.concat(pd_data_list).sort_values(by=['rdq_0', 'symbol']).copy()
-    pd_data_operate['year'] = pd_data_operate['rdq_0'].str[:4].astype(int)
-    head_keys = ['symbol', 'datafqtr', 'num_valid', 'year']
-    pd_data_operate = pd_data_operate[head_keys + [i for i in pd_data_operate.columns if i not in head_keys]]
-
+    pd_data_operate = prepare_pd_data_operate(pd_base, _pd_data, new_keys_growth)
     _decision_time_start_month = date_month_convertion(_decision_time_start)
     _decision_time_end_month = date_month_convertion(_decision_time_end)
     n_period = (_decision_time_end_month - _decision_time_start_month) // evaluate_span_month
@@ -1431,6 +1514,10 @@ if __name__ == '__main__':
     pd_holding_record_final = pd.concat(pd_holding_record_list)
     pd_fr_record_final = pd.concat(pd_fr_record_list)
     pd_transform_save = pd.DataFrame(dict_transform_save_list)
+
+    pd_transform_save_copy = pd_transform_save.copy()
+
+    pd_transform_save = pd_transform_save_copy[['i_trial', 'i_period', 'dict_transform_model', 'dict_transform_hyper']]
 
     if 'write' == 'not write':
         file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/Wharton/result/dict_save_data*')] + [0]) + 1
