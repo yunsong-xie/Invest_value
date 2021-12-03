@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_11.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_11.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
@@ -508,7 +509,14 @@
       <option name="project" value="LOCAL" />
       <updated>1637985837751</updated>
     </task>
-    <option name="localTasksCounter" value="45" />
+    <task id="LOCAL-00045" summary="V12 changes:&#10;1. Added pseudo label function&#10;2. Debugged the quantile selection method, so that baseline performance is in consistent with V11">
+      <created>1638496374585</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1638496374585</updated>
+    </task>
+    <option name="localTasksCounter" value="46" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -524,7 +532,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Test more files in static folder" />
     <MESSAGE value="Developing sec/yf reporting dates matching algorithm for US located companies." />
     <MESSAGE value="Historical asset obnormal change identifying function added in get_price_info.py" />
     <MESSAGE value="Add regular expression based yahoo finance financial report block search, pending finish." />
@@ -549,6 +556,7 @@
     <MESSAGE value="1. Completed Monte Carlo simulation setup&#10;2. Add random forest as regressor, dramatically increased profit&#10;3. Change get_price_info.py so that if there is no &quot;future&quot; price info available, get the latest &quot;past&quot; price info." />
     <MESSAGE value="version 9 yields the best result, should not change from now, use it as a benchmark&#10;1. if buy fits the criteria, update the rdq_0, rdq_pq4 time&#10;2. Same decision cycle free to swap&#10;3. Flexible over spend to balance &#10;4. Based on prediction to adjust holding weight&#10;5. add random forest setup for booster and subsample&#10;6. rewrite sell_blind option&#10;7. Make buy and sell functions for standard operation&#10;8. Corrected sell function bug of the when rdq is nan, it automatically grab the latest price info &#10;9. V10 add tuning nobs to select the num_p gauge for train/buy/sell datasets &#10;10. V10 needs to work on how to reproduce the best data in V9." />
     <MESSAGE value="V10 update:&#10;1. Record transaction history, and historical buy/sell stock financial report&#10;5. function to calculate gain vs quantile/metric&#10;7. Add parameter to adjust replacement time criteria from has be in the same decision time period to adjustable number of months before the purchase&#10;&#10;&#10;Starts V11, to enable (pending)&#10;1. Record metric quantile &#10;2. new bought stock weight based on metric&#10;3. recalculate metric for historical buy/sell stock financial report, update to latest metric&#10;4. Boolean controller to activate always 100% in stock - restock mode&#10;5. Add boolean controller to do replacement" />
-    <option name="LAST_COMMIT_MESSAGE" value="V10 update:&#10;1. Record transaction history, and historical buy/sell stock financial report&#10;5. function to calculate gain vs quantile/metric&#10;7. Add parameter to adjust replacement time criteria from has be in the same decision time period to adjustable number of months before the purchase&#10;&#10;&#10;Starts V11, to enable (pending)&#10;1. Record metric quantile &#10;2. new bought stock weight based on metric&#10;3. recalculate metric for historical buy/sell stock financial report, update to latest metric&#10;4. Boolean controller to activate always 100% in stock - restock mode&#10;5. Add boolean controller to do replacement" />
+    <MESSAGE value="V12 changes:&#10;1. Added pseudo label function&#10;2. Debugged the quantile selection method, so that baseline performance is in consistent with V11" />
+    <option name="LAST_COMMIT_MESSAGE" value="V12 changes:&#10;1. Added pseudo label function&#10;2. Debugged the quantile selection method, so that baseline performance is in consistent with V11" />
   </component>
 </project>

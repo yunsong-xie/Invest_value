@@ -733,8 +733,8 @@ if 'Define Function' == 'Define Function':
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
         pd_mdata, features_x = prepare_features(pd_data, dict_transform, data_type='investing')
 
-        for feature in dict_transform['mean']:
-            ind_neg = pd_mdata[feature] < 0
+        for feature in [i for i in dict_transform['mean'] if i in pd_mdata.columns]:
+            ind_neg = pd_mdata[feature] <= 0
             if any(ind_neg):
                 pd_mdata.loc[ind_neg, feature] = pd_mdata.loc[pd_mdata[feature] > 0, feature].min()
             col = np.log10(pd_mdata[feature].values)
@@ -832,7 +832,7 @@ if 'Define Function' == 'Define Function':
             _pd_holding_record = _pd_holding_record[keys + ['value']]
         return _pd_holding_record
 
-    def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, dict_transform, dict_transform_save=None):
+    def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, dict_transform):
 
         if 'define parameters' == 'define parameters':
             decision_time_final = dict_decision_time['start']
@@ -917,7 +917,7 @@ if 'Define Function' == 'Define Function':
             pd_train = pd_train.loc[pd_train.num_p >= training_num_p_min]
 
         bool_operature = len(pd_data_eval) > 0
-        pd_data_eval_operation = []
+        pd_data_eval_operation, regr_list = [], None
         if ('prediction' == 'prediction') & bool_operature:
             if predict_method.lower() == 'sklearn':
                 dict_transform, regr_list = get_model_sklearn(pd_train, dict_transform)
@@ -1050,8 +1050,9 @@ if 'Define Function' == 'Define Function':
                 # Just update the parameters
                 ind_array = pd_holding.symbol == symbol
                 rdq_0_1st, _shares, _cost = pd_holding.loc[ind_array].iloc[0][['rdq_0_1st', 'shares', 'cost']]
+                quantile = sum(pd_entry[eval_metric] > pd_data_eval[eval_metric]) / len(pd_data_eval[eval_metric])
                 pd_holding.loc[ind_array] = [symbol, _shares, rdq_0_1st, rdq_b, pd_entry['rdq_pq4'],
-                                             pd_entry[eval_metric], pd_entry['num_p'], _cost]
+                                             pd_entry[eval_metric], quantile, pd_entry['num_p'], _cost]
                 bool_execute = True
             else:
                 # Could be rebalance or new purchase, only difference is how to calculated the previous cost
@@ -1070,9 +1071,11 @@ if 'Define Function' == 'Define Function':
                 if value_buy > 0:
                     pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - value_buy
                     if symbol not in list(pd_holding.symbol):
+                        quantile = sum(pd_entry[eval_metric] > pd_data_eval[eval_metric]) / len(pd_data_eval[eval_metric])
                         pd_holding_new = pd.DataFrame({'symbol': [symbol], 'shares': [value_buy / marketcap_b],
                                                        'rdq_0_1st': pd_entry['rdq_0'], 'rdq_0': pd_entry['rdq_0'],
                                                        'rdq_pq4': [pd_entry['rdq_pq4']], 'pred': [pd_entry[eval_metric]],
+                                                       'quantile': [quantile],
                                                        'num_p': [pd_entry['num_p']], 'cost': value_buy})
                         pd_holding = pd.concat([pd_holding, pd_holding_new])
 
@@ -1329,14 +1332,14 @@ if __name__ == '__main__':
     features_exempt = ['num', 'num_p']
     n_threads = 1
     regr_type = 'RF'
-    n_estimators_min, n_estimators_max = 350, 450
+    n_estimators_min, n_estimators_max = 70, 80
     learning_rate_min, learning_rate_max = 0.85, 1
     max_depth = 5
     booster, subsample = 'gbtree', 0.85
     training_num_p_min = 0.75
     _decision_time_start, _decision_time_end = '2005-01-01', '2021-12-31'
-    n_trials = 10
-    n_regr = 10
+    n_trials = 1
+    n_regr = 7
     aug_size_train, aug_sigma_train = 20, 0.1
 
     #################################################
@@ -1358,10 +1361,12 @@ if __name__ == '__main__':
     marketcap_min, n_year_x = 100, 3
     margin_interest, capital_gain_interest = 0.08, 0.2
     tree_method, predictor = 'gpu_hist', 'gpu_predictor'
-    n_estimators_list = np.linspace(n_estimators_min, n_estimators_max, n_regr).astype(int)
-    learning_rates = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
-    n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
-    learning_rates = list(learning_rates) + list(learning_rates)[::-1]
+    #n_estimators_list = np.linspace(n_estimators_min, n_estimators_max, n_regr).astype(int)
+    #learning_rates = np.arange(learning_rate_min, learning_rate_max, (learning_rate_max - learning_rate_min) / n_regr)
+    #n_estimators_list = list(n_estimators_list) + list(n_estimators_list)
+    #learning_rates = list(learning_rates) + list(learning_rates)[::-1]
+    n_estimators_list = (np.random.random(n_regr) * (n_estimators_max - n_estimators_min + 1) + n_estimators_min).astype(int)
+    learning_rates = (np.random.random(n_regr) * (learning_rate_max - learning_rate_min + 1) + learning_rate_min).astype(int)
     _ = min(len(n_estimators_list), len(learning_rates))
     n_estimators_list, learning_rate_list = n_estimators_list[:_], learning_rates[:_]
 
@@ -1441,8 +1446,8 @@ if __name__ == '__main__':
     pd_holding_record_list, pd_fr_record_list, pd_transform_save_list = [], [], []
     dict_transform_save_list = {'i_trial': [], 'i_period': [], 'dict_transform_model': [], 'dict_transform_hyper': []}
     for i_trial in range(n_trials):
-        pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None],
-                                   'rdq_0': [None], 'rdq_pq4': [None], 'pred': [None], 'num_p': [None], 'cost': [None]})
+        pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None], 'rdq_0': [None], 'rdq_pq4': [None],
+                                   'pred': [None], 'quantile': [None], 'num_p': [None], 'cost': [None]})
         time_start, pd_fr_record = time.time(), pd.DataFrame({'decision_time': []})
         value_total, period_count = None, 0
         for i_period in range(n_period + 1):
