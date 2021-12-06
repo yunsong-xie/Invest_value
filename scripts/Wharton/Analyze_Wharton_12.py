@@ -555,7 +555,7 @@ if 'Define Function' == 'Define Function':
         features_growth = ['book_value', 'revenue']
         features_x_select = ['mc_bv_0', 'mc_bv_1', 'num_p', 'revenue_0_growth_quantile', 'book_value_0_growth_quantile']
 
-        features_bvr_year = ['cash_flow', 'revenue', 'profit']
+        features_bvr_year = ['cur_asset', 'cur_liab', 'cash_invest', 'cash_flow', 'revenue', 'profit']
         features_bvr_quarter = ['cur_asset', 'cur_liab']
         features_growth = ['book_value', 'revenue']
         features_x_select = ['num_p', 'mc_bv_0']
@@ -1416,9 +1416,9 @@ if __name__ == '__main__':
     #################################################
     # training hyperparameters
     dict_revenue_growth_min_soft, dict_book_value_growth_min_soft = {'1': 0.0, '0': 0.3}, {'1': 0.0, '0': 0.3}
-    dict_revenue_growth_min, dict_book_value_growth_min = {'1': 0.0, '0': 0.2}, {'1': 0.0, '0': 0.25}
+    dict_revenue_growth_min, dict_book_value_growth_min = {'1': 0.0, '0': 0.2}, {'1': 0.0, '0': 0.2}
     ratio_stock_select, ratio_stock_select_span_year = 0.6, 1
-    mc_book_ratio, mc_revenue_ratio = [2.5, 65], [1.5, 65]
+    mc_book_ratio, mc_revenue_ratio = [2.5, 65], [2, 65]
     evaluate_span_month, replace_span_month = 3, 3
     coeff_fade = 0.9
     func_shift, func_power, std_adjust = 2, 2, 2
@@ -1480,7 +1480,8 @@ if __name__ == '__main__':
                       'sell_type': sell_type, 'buy_num_p_min': buy_num_p_min, 'sell_num_p_min': sell_num_p_min,
                       'replace_span_month': replace_span_month, 'bool_replace': bool_replace, 'bool_rebalance': bool_rebalance,
                       'capital_gain_interest': capital_gain_interest, 'ratio_max_hold': ratio_max_hold, 'min_samples_split': min_samples_split,
-                      'bool_metric_recalculate': bool_metric_recalculate, 'min_samples_leaf': min_samples_leaf}
+                      'bool_metric_recalculate': bool_metric_recalculate, 'dict_revenue_growth_min_soft': dict_revenue_growth_min_soft,
+                      'min_samples_leaf': min_samples_leaf, 'dict_book_value_growth_min_soft': dict_book_value_growth_min_soft}
 
     _pd_data = pd_data_ori.copy()
     # Get rid of the data entires should be pre-filtered
@@ -1545,7 +1546,6 @@ if __name__ == '__main__':
         decision_time_end = date_month_convertion(_decision_time_start_month + (i_period + 1) * evaluate_span_month - 1, True)
         dict_decision_time = {'start': decision_time_start, 'end': decision_time_end}
 
-
         for i_period in range(n_period + 1):
             period_count += 1
             decision_time_start = date_month_convertion(_decision_time_start_month + i_period * evaluate_span_month, False)
@@ -1588,14 +1588,6 @@ if __name__ == '__main__':
     #pd_transform_save = pd_transform_save_copy[['i_trial', 'i_period', 'dict_transform_model', 'dict_transform_hyper']]
     pd_transform_save = pd_transform_save_copy[['i_trial', 'i_period', 'dict_transform_hyper']]
 
-    if 'write' == 'not write':
-        file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/Wharton/result/dict_save_data*')] + [0]) + 1
-        file_label = str(file_label).rjust(2, '0')
-        dict_save_data = {'pd_holding_record_final': pd_fr_record_final, 'pd_fr_record_final': pd_fr_record_final,
-                          'pd_transform_save': pd_transform_save}
-        with open(f'result/dict_save_data_{file_label}.pkl', 'wb') as handle:
-            pickle.dump(dict_save_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
     decision_times = list(pd_holding_record_final.decision_time_end.unique())
     decision_time_end_max = max(decision_times)
     pd_holding_record_last = pd_holding_record_final.loc[pd_holding_record_final.decision_time_end == decision_time_end_max]
@@ -1606,6 +1598,16 @@ if __name__ == '__main__':
     growth_mean = round(pd_value['annual_growth'].mean() * 100, 1)
     growth_std = round(pd_value['annual_growth'].std() * 100, 1)
     print(f'Growth stats - mean {growth_mean} - std {growth_std}')
+
+    if 'write' == 'not write':
+        file_label = max([int(i[:-4].split('_')[-1]) for i in glob.glob(f'{DIR}/scripts/wharton/result/dict_save_data*')] + [0]) + 1
+        file_label = str(file_label).rjust(2, '0')
+        dict_save_data = {'pd_holding_record_final': pd_holding_record_final, 'pd_fr_record_final': pd_fr_record_final,
+                          'pd_transform_save': pd_transform_save, 'pd_value': pd_value}
+        with open(f'result/dict_save_data_{file_label}.pkl', 'wb') as handle:
+            pickle.dump(dict_save_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 
 if 'a' == 'b':
     fig, ax = plt.subplots(1, 4, figsize=(18, 5))
@@ -1821,3 +1823,6 @@ if 'a' == 'b':
     fig.tight_layout()
 # pd_fr_record_copy, pd_holding_copy = pd_fr_record.copy(), pd_holding.copy()
 # pd_fr_record, pd_holding = pd_fr_record_copy.copy(), pd_holding_copy.copy()
+
+with open(f'result/dict_save_data_04.pkl', 'rb') as handle:
+    dict_result_data = pickle.load(handle)

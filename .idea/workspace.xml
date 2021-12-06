@@ -5,8 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_11.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_11.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/update_price.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -50,7 +53,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Invest_value_ori" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/scripts/wharton" />
     <property name="settings.editor.selected.configurable" value="preferences.sourceCode" />
   </component>
   <component name="PyConsoleOptionsProvider">
@@ -78,32 +81,14 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.Analyze_Wharton_12">
-    <configuration name="Analyze_Wharton_10" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.Analyze_Wharton_13">
+    <configuration name="Analyze_Wharton_11" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_10.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="Analyze_Wharton_11" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Invest_value" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -136,10 +121,31 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="Analyze_Wharton_13" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_13.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="update_price" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -158,6 +164,9 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -174,11 +183,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.Analyze_Wharton_13" />
         <item itemvalue="Python.Analyze_Wharton_12" />
         <item itemvalue="Python.Analyze_Wharton_11" />
         <item itemvalue="Python.update_price" />
         <item itemvalue="Python.upload_report" />
-        <item itemvalue="Python.Analyze_Wharton_10" />
       </list>
     </recent_temporary>
   </component>
@@ -516,7 +525,14 @@
       <option name="project" value="LOCAL" />
       <updated>1638511582202</updated>
     </task>
-    <option name="localTasksCounter" value="47" />
+    <task id="LOCAL-00047" summary="V12 finalize for better return policy">
+      <created>1638747445373</created>
+      <option name="number" value="00047" />
+      <option name="presentableId" value="LOCAL-00047" />
+      <option name="project" value="LOCAL" />
+      <updated>1638747445373</updated>
+    </task>
+    <option name="localTasksCounter" value="48" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -532,7 +548,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Historical asset obnormal change identifying function added in get_price_info.py" />
     <MESSAGE value="Add regular expression based yahoo finance financial report block search, pending finish." />
     <MESSAGE value="Make changes" />
     <MESSAGE value="Make changes to CIQ selenium program, more stable now." />
@@ -557,6 +572,7 @@
     <MESSAGE value="V10 update:&#10;1. Record transaction history, and historical buy/sell stock financial report&#10;5. function to calculate gain vs quantile/metric&#10;7. Add parameter to adjust replacement time criteria from has be in the same decision time period to adjustable number of months before the purchase&#10;&#10;&#10;Starts V11, to enable (pending)&#10;1. Record metric quantile &#10;2. new bought stock weight based on metric&#10;3. recalculate metric for historical buy/sell stock financial report, update to latest metric&#10;4. Boolean controller to activate always 100% in stock - restock mode&#10;5. Add boolean controller to do replacement" />
     <MESSAGE value="V12 changes:&#10;1. Added pseudo label function&#10;2. Debugged the quantile selection method, so that baseline performance is in consistent with V11" />
     <MESSAGE value="Fine tuned V12" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fine tuned V12" />
+    <MESSAGE value="V12 finalize for better return policy" />
+    <option name="LAST_COMMIT_MESSAGE" value="V12 finalize for better return policy" />
   </component>
 </project>
