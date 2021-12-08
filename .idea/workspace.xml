@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -103,6 +104,9 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -535,7 +539,14 @@
       <option name="project" value="LOCAL" />
       <updated>1638770214043</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="Add V13 for custom investing holding span tuning.">
+      <created>1638854279371</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1638854279371</updated>
+    </task>
+    <option name="localTasksCounter" value="50" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -551,7 +562,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Make changes" />
     <MESSAGE value="Make changes to CIQ selenium program, more stable now." />
     <MESSAGE value="Change identify filing date from yahoo finance to sec" />
     <MESSAGE value="Add wharton scripts." />
@@ -576,6 +586,7 @@
     <MESSAGE value="Fine tuned V12" />
     <MESSAGE value="V12 finalize for better return policy" />
     <MESSAGE value="Add V13 for custom metric tuning." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add V13 for custom metric tuning." />
+    <MESSAGE value="Add V13 for custom investing holding span tuning." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add V13 for custom investing holding span tuning." />
   </component>
 </project>
