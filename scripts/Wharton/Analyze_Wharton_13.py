@@ -565,6 +565,7 @@ if 'Define Function' == 'Define Function':
         features_growth = ['book_value', 'revenue']
         features_x_select = ['num_p', 'mc_bv_0']
         features_growth_time_label = ['year']
+        features_growth_year_label = [0, 1]
 
         for _ in features_growth:
             # features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('q4' not in i)]
@@ -574,7 +575,8 @@ if 'Define Function' == 'Define Function':
             if 'quarter' in features_growth_time_label:
                 features_x_select += [i for i in features_x if (_ in i) & ('growth' in i) & ('quantile' not in i) & ('q' in i) & ('0' in i)]
         for _ in features_bvr_year:
-            features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & ('q' not in i) & ('0' in i)]
+            for year_label in [str(i) for i in features_growth_year_label]:
+                features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & ('q' not in i) & (year_label in i)]
         for _ in features_bvr_quarter:
             features_x_select += [i for i in features_x if (_ in i) & ('bvr' in i) & ('q' in i) & ('0' in i)]
 
@@ -902,6 +904,287 @@ if 'Define Function' == 'Define Function':
         pd_data_operate = pd_data_operate.merge(pd_base_right, on='rank', how='inner')
         return pd_data_operate
 
+    class Transaction:
+        def _sell_share_basic(self, pd_fr_record, pd_holding, symbol, rdq_s, shares, operate_type):
+            if 'pandas' in str(type(rdq_s)):
+                sell_date = str(rdq_s)[:10]
+            elif (type(rdq_s) is str) & (len(str(rdq_s)) == 10):
+                sell_date = str(rdq_s)[:10]
+            else:
+                raise ValueError(f'Selling data value error, got input {rdq_s}')
+            if shares < 0:
+                raise ValueError("Selling share can not be negative.")
+
+            _ind = pd_holding.symbol == symbol
+
+            pd_quote_temp = pd_holding.loc[_ind].copy()
+            pd_quote_temp['rdq_0'] = sell_date
+            pd_quote = stock_price.get_marketcap_time(pd_quote_temp, time_col='rdq_0')
+
+            # Add selling stock to record
+            free_cash_current = pd_holding.iloc[0].shares
+
+            rdq_0, num_p, cost, shares_total = pd_holding.loc[_ind].iloc[0][['rdq_0', 'num_p', 'cost', 'shares']]
+            if shares > shares_total:
+                raise ValueError(f"Selling shares can't be more than current holding amount {symbol}, "
+                                 f"trying to sell {shares}, current holding {shares_total}")
+
+            stock_value = shares_total * pd_quote.iloc[0].marketcap
+            stock_value_sell = stock_value * shares / shares_total
+            free_cash_current += stock_value_sell
+
+            if shares < shares_total * 0.99999:
+                pd_holding.loc[pd_holding.symbol == symbol, 'shares'] = shares_total * (1 - stock_value_sell / stock_value)
+                pd_holding.loc[pd_holding.symbol == symbol, 'cost'] = cost * (1 - stock_value_sell / stock_value)
+            else:
+                pd_holding = pd_holding.loc[pd_holding.symbol != symbol].copy()
+
+            pd_fr_record_last_buy = pd_fr_record.loc[(pd_fr_record.symbol == symbol) & (pd_fr_record.rdq_0 == rdq_0) &
+                                                     (pd_fr_record.num_p == num_p) &
+                                                     (~pd_fr_record.datatype.str.contains('sell'))].copy()
+            if len(pd_fr_record_last_buy) > 0:
+                pd_fr_record_last_buy = pd_fr_record_last_buy.iloc[[-1]].copy()
+                pd_fr_record_last_buy['rdq_operate'] = str(sell_date)[:10]
+                pd_fr_record_last_buy['datatype'] = operate_type
+                pd_fr_record_last_buy['cost'] = cost * (stock_value_sell / stock_value)
+                pd_fr_record_last_buy['c_return'] = stock_value_sell
+                pd_fr_record_last_buy['rdq_0_1st'] = str(pd_quote_temp.rdq_0_1st.iloc[0])[:10]
+                pd_fr_record = pd.concat([pd_fr_record, pd_fr_record_last_buy])
+            pd_holding.iloc[0] = ['free_cash', free_cash_current] + [None] * (len(pd_holding.keys()) - 2)
+            return pd_fr_record, pd_holding
+
+        def _buy_share_basic(self, pd_fr_record, pd_holding, symbol, rdq_b, value_buy, operate_type, pd_entry):
+            """
+
+            Args:
+                pd_fr_record:
+                pd_holding:
+                symbol:
+                rdq_b:
+                value_buy:
+                operate_type:
+                pd_entry (pandas.core.series.Series/dict):
+                    should contain the followed keys: symbol, rdq_0, rdq_pq4, eval_metric, num_p,
+                                                      rdq_0_1st(only for rebalance)
+
+            Returns:
+
+            """
+            bool_execute, rdq_0_1st = False, None
+            if value_buy < 0:
+                raise ValueError("value_buy can not be negative value.")
+            if (len(pd_holding) >= (n_stocks + 1)) & (symbol not in list(pd_holding.symbol)):
+                raise ValueError(f"Currently Holding {len(pd_holding) - 1} stocks, can't further purchase {symbol}\n"
+                                 f"Holidng stocks: {', '.join(list(pd_holding.symbol.iloc[1:]))}")
+            if pd_entry is not None:
+                if pd_entry['symbol'] != symbol:
+                    raise ValueError(f"Symbol of input pd_entry '{pd_entry['symbol']}' does not match with symbol input '{symbol}'")
+
+            if (symbol in list(pd_holding.symbol)) & (value_buy == 0):
+                # Just update the parameters
+                ind_array = pd_holding.symbol == symbol
+                rdq_0_1st, _shares, _cost, eval_metric_quantile = pd_holding.loc[ind_array].iloc[0][['rdq_0_1st', 'shares', 'cost', 'eval_metric_quantile']]
+                pd_holding.loc[ind_array] = [symbol, _shares, rdq_0_1st, rdq_b, pd_entry['rdq_pq4'],
+                                             pd_entry[eval_metric], pd_entry['num_p'], _cost, eval_metric_quantile]
+                bool_execute = True
+            else:
+                # Could be rebalance or new purchase, only difference is how to calculated the previous cost
+                free_cash = pd_holding.iloc[0].shares
+                pd_quote_temp = pd.DataFrame({'symbol': [symbol], 'rdq_0': [str(rdq_b)[:10]]})
+                pd_quote = stock_price.get_marketcap_time(pd_quote_temp, time_col='rdq_0')
+                marketcap_b = pd_quote.iloc[0].marketcap
+
+                pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
+                _value_total = pd_value_cal.value.sum()
+                _ratio_margin = 0 if bool_rebalance else ratio_margin
+                if (value_buy - free_cash) * 0.99999 > ((_ratio_margin + 1) * _value_total):
+                    raise ValueError(f"Too much margin applied current holding \n {pd_value_cal} \n "
+                                     f"Further want to purchase '{symbol}' value {round(value_buy)}")
+
+                if value_buy > 0:
+                    pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - value_buy
+                    if symbol not in list(pd_holding.symbol):
+                        pd_holding_new = pd.DataFrame({'symbol': [symbol], 'shares': [value_buy / marketcap_b],
+                                                       'rdq_0_1st': pd_entry['rdq_0'], 'rdq_0': pd_entry['rdq_0'],
+                                                       'rdq_pq4': [pd_entry['rdq_pq4']], 'pred': [pd_entry[eval_metric]],
+                                                       'num_p': [pd_entry['num_p']], 'cost': value_buy,
+                                                       'eval_metric_quantile': pd_entry.eval_metric_quantile})
+                        pd_holding = pd.concat([pd_holding, pd_holding_new])
+
+                    else:
+                        # rebalance buy
+                        cost_pre, shares_pre = pd_holding.loc[pd_holding.symbol == symbol].iloc[0][['cost', 'shares']]
+                        shares_new = value_buy / marketcap_b
+                        pd_holding.loc[pd_holding.symbol == symbol, ['cost', 'shares']] = cost_pre + value_buy, shares_pre + shares_new
+
+                    bool_execute = True
+                    rdq_0_1st = rdq_b
+
+            if bool_execute:
+                if type(pd_entry) is pd.core.series.Series:
+                    _pd_temp = pd_entry.to_frame().T.copy()
+                    eval_metric_quantile = pd_entry.eval_metric_quantile
+                elif type(pd_entry) is dict:
+                    _pd_temp = pd.DataFrame({i: [pd_entry[i]] for i in pd_entry})
+                    eval_metric_quantile = pd_entry['eval_metric_quantile']
+                else:
+                    raise TypeError(f'Not able to recognize type of input pd_entry {type(pd_entry)}')
+
+                _pd_temp['datatype'] = operate_type
+                _pd_temp['rdq_0_1st'] = str(rdq_0_1st)[:10]
+                _pd_temp['eval_metric_quantile'] = eval_metric_quantile
+
+                pd_fr_record = pd.concat([pd_fr_record, _pd_temp])
+
+            return pd_fr_record, pd_holding
+
+        def sell_share(self, pd_fr_record, pd_holding, symbol, rdq_s, operate_type):
+
+            symbols_holding = list(pd_holding.iloc[1:].symbol)
+            if (symbol in symbols_holding) & (operate_type in ['sell', 'sell_blind', 'sell_replace']):
+                shares = pd_holding.loc[pd_holding.symbol == symbol].iloc[0].shares
+                pd_fr_record, pd_holding = self._sell_share_basic(pd_fr_record, pd_holding, symbol,
+                                                                  rdq_s, shares, operate_type)
+                if bool_rebalance & (operate_type not in ['sell_replace']):
+                    pd_fr_record, pd_holding = self.buy_share(pd_fr_record, pd_holding, pd_entry=None,
+                                                              rdq_b=rdq_s, operate_type='buy_rebalance')
+            elif (symbol is None) & (operate_type == 'sell_rebalance'):
+                # for sell_rebalance, symbol should be None
+                n_holding = len(symbols_holding)
+                if n_holding > 0:
+                    # Each stock sell the same percentage for cleaning up space for new stock purchase
+                    pd_value_cal = get_holding_value(pd_holding, rdq_s, bool_keep=False)
+                    free_cash = pd_value_cal.iloc[0].value
+                    _value_total = pd_value_cal.value.sum()
+                    free_cash_need = min(_value_total * ratio_max_hold, _value_total / (n_holding + 1))
+                    value_sell_total = free_cash_need - free_cash
+
+                    if value_sell_total > 0:
+                        ratio_sell_each = value_sell_total / pd_value_cal.iloc[1:].value.sum()
+                        for symbol in symbols_holding:
+                            shares_holding = pd_holding.loc[pd_holding.symbol == symbol].iloc[0]['shares']
+                            shares_sell = shares_holding * ratio_sell_each
+                            pd_fr_record, pd_holding = self._sell_share_basic(pd_fr_record, pd_holding, symbol, rdq_s,
+                                                                              shares=shares_sell, operate_type='sell_rebalance')
+            else:
+                raise KeyError(f"Not able to recognize this operation, sell can only be used under two cases:\n"
+                               f"1. symbol is one in pd_holding, representing clean sell, operate_type should be in ['sell', 'sell_blind']\n"
+                               f"2. symbol is None operate_type is sell_rebalance. \n"
+                               f"Input symbol is '{symbol}', operate_type is '{operate_type}'")
+            return pd_fr_record, pd_holding
+
+        def buy_share(self, pd_fr_record, pd_holding, pd_entry, rdq_b, operate_type, value_buy_force=None):
+            """
+
+            Args:
+                pd_fr_record:
+                pd_holding:
+                pd_entry (pandas.core.series.Series/dict):
+                    should contain the followed keys symbol, rdq_0, rdq_pq4, eval_metric, num_p
+                rdq_b:
+                operate_type:
+
+            Returns:
+
+            """
+
+            if len(pd_holding) >= (n_stocks + 1):
+                # too many stock is being held, no purchase to be executed
+                return pd_fr_record, pd_holding
+
+            if (pd_entry is not None) & (operate_type in ['buy', 'buy_replace']):
+                symbol = pd_entry['symbol']
+                if symbol in list(pd_holding.symbol):
+                    pd_fr_record, pd_holding = self._buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, 0, 'refresh', pd_entry)
+                else:
+                    if bool_rebalance:
+                        # How much cap to be cleaned is determined in sell_share function
+                        if operate_type != 'buy_replace':
+                            pd_fr_record, pd_holding = self.sell_share(pd_fr_record, pd_holding, symbol=None,
+                                                                       rdq_s=rdq_b, operate_type='sell_rebalance')
+                            pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
+                            _value_total = pd_value_cal.value.sum()
+                            free_cash = pd_value_cal.iloc[0].shares
+                            value_buy = min(free_cash, _value_total * ratio_max_hold)
+                        else:
+                            value_buy = value_buy_force
+
+                        pd_fr_record, pd_holding = self._buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b,
+                                                                         value_buy, operate_type, pd_entry)
+                    else:
+                        # ratio_margin is only applied when rebalance is deactivated
+                        # ratio_margin is only used when mean value can't be achieved using the available free cash
+                        pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
+                        _value_total = pd_value_cal.value.sum()
+                        free_cash = pd_value_cal.iloc[0].shares
+                        _value_mean = _value_total / n_stocks
+                        if free_cash > _value_mean:
+                            if len(pd_holding) == n_stocks:
+                                value_buy = free_cash
+                            else:
+                                value_buy = _value_mean
+                        else:
+                            _margin = _value_total * ratio_margin
+                            if free_cash > -_margin:
+                                value_buy = min(free_cash + _margin, _value_mean)
+                            else:
+                                value_buy = 0
+                        pd_fr_record, pd_holding = self._buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b,
+                                                                         value_buy, operate_type, pd_entry)
+
+            elif (pd_entry is None) & (operate_type == 'buy_rebalance'):
+
+                if len(pd_holding) != 1:
+                    free_cash = pd_holding.iloc[0].shares
+                    pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
+                    _value_total = pd_value_cal.value.sum()
+
+                    pd_value_cal['value_goal'] = _value_total * ratio_max_hold
+                    pd_value_cal['value_add'] = pd_value_cal['value_goal'] - pd_value_cal['value']
+                    pd_value_cal_add = pd_value_cal.loc[(pd_value_cal['value_add'] > 0) & (pd_value_cal['symbol'] != 'free_cash')].copy()
+                    value_add_total = pd_value_cal_add['value_add'].sum()
+                    value_add_final_total = min(free_cash, value_add_total)
+                    pd_value_cal_add['value_add_final'] = pd_value_cal_add['value_add'] / value_add_total * value_add_final_total
+                    for ind in range(len(pd_value_cal_add)):
+                        pd_value_cal_add_entry = pd_value_cal_add.iloc[ind]
+                        symbol, value_add = pd_value_cal_add_entry[['symbol', 'value_add_final']]
+                        pd_entry = {i: pd_value_cal_add_entry[i] for i in ['symbol', 'rdq_0', 'rdq_pq4', 'pred',
+                                                                           'num_p', 'eval_metric_quantile']}
+                        pd_entry[eval_metric] = pd_value_cal_add_entry['pred']
+                        pd_fr_record, pd_holding = self._buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b,
+                                                                         value_add, 'buy_rebalance', pd_entry)
+
+            else:
+                raise KeyError(f"Not able to recognize this operation, sell can only be used under two cases:\n"
+                               f"1. pd_entry is None, operate_type is 'buy'\n"
+                               f"2. pd_entry is not None, operate_type is 'buy_rebalance'\n"
+                               f"Input pd_entry is '{pd_entry}', operate_type is '{operate_type}'")
+
+            return pd_fr_record, pd_holding
+
+        def swap_share(self, pd_fr_record, pd_holding, pd_entry, symbol_hold, rdq_buy):
+            """
+            Replace share
+            Args:
+                pd_fr_record (pandas.dataframe): Transaction recording data
+                pd_holding (pandas.dataframe): Currently held stock data
+                pd_entry (dict/pandas.dataframe): Info needed for the purchasing transaction, should at least contains:
+                        ['symbol', 'rdq_0', 'rdq_pq4', 'pred', 'num_p', 'eval_metric_quantile']
+                symbol_hold (str): symbol of the currently held
+                rdq_buy (str/datetime): date of the purchasing
+
+            Returns:
+                pd_fr_record (pandas.dataframe): Renewed transaction recording data
+                pd_holding (pandas.dataframe): Renewed currently held stock data
+            """
+            pd_fr_record, pd_holding = self.sell_share(pd_fr_record, pd_holding, symbol_hold, rdq_buy, 'sell_replace')
+            value_buy_force = pd_fr_record.iloc[-1]['c_return']
+            pd_fr_record, pd_holding = self.buy_share(pd_fr_record, pd_holding, pd_entry, rdq_buy, 'buy_replace', value_buy_force)
+            return pd_fr_record, pd_holding
+
+    transaction = Transaction()
+    self = transaction
+
     def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, dict_transform, seed=None):
 
         # seed = 0
@@ -1078,261 +1361,6 @@ if 'Define Function' == 'Define Function':
             pd_data_eval_operation_show = pd_data_eval_operation.sort_values(by=['rdq_operate', 'symbol'])
             pd_data_eval_operation_show = pd_data_eval_operation_show.loc[pd_data_eval_operation_show['datatype'] == 'buy']
 
-        def _sell_share_basic(pd_fr_record, pd_holding, symbol, rdq_s, shares, operate_type):
-            if 'pandas' in str(type(rdq_s)):
-                sell_date = str(rdq_s)[:10]
-            elif (type(rdq_s) is str) & (len(str(rdq_s)) == 10):
-                sell_date = str(rdq_s)[:10]
-            else:
-                raise ValueError(f'Selling data value error, got input {rdq_s}')
-            if shares < 0:
-                raise ValueError("Selling share can not be negative.")
-
-            _ind = pd_holding.symbol == symbol
-
-            pd_quote_temp = pd_holding.loc[_ind].copy()
-            pd_quote_temp['rdq_0'] = sell_date
-            pd_quote = stock_price.get_marketcap_time(pd_quote_temp, time_col='rdq_0')
-
-            # Add selling stock to record
-            free_cash_current = pd_holding.iloc[0].shares
-
-            rdq_0, num_p, cost, shares_total = pd_holding.loc[_ind].iloc[0][['rdq_0', 'num_p', 'cost', 'shares']]
-            if shares > shares_total:
-                raise ValueError(f"Selling shares can't be more than current holding amount {symbol}, "
-                                 f"trying to sell {shares}, current holding {shares_total}")
-
-            stock_value = shares_total * pd_quote.iloc[0].marketcap
-            stock_value_sell = stock_value * shares / shares_total
-            free_cash_current += stock_value_sell
-
-            if shares < shares_total * 0.99999:
-                pd_holding.loc[pd_holding.symbol == symbol, 'shares'] = shares_total * (1 - stock_value_sell / stock_value)
-                pd_holding.loc[pd_holding.symbol == symbol, 'cost'] = cost * (1 - stock_value_sell / stock_value)
-            else:
-                pd_holding = pd_holding.loc[pd_holding.symbol != symbol].copy()
-
-            pd_fr_record_last_buy = pd_fr_record.loc[(pd_fr_record.symbol == symbol) & (pd_fr_record.rdq_0 == rdq_0) &
-                                                     (pd_fr_record.num_p == num_p) & (~pd_fr_record.datatype.str.contains('sell'))].copy()
-            pd_fr_record_last_buy['rdq_operate'] = str(sell_date)[:10]
-            pd_fr_record_last_buy['datatype'] = operate_type
-            pd_fr_record_last_buy['cost'] = cost * (stock_value_sell / stock_value)
-            pd_fr_record_last_buy['c_return'] = stock_value_sell
-            pd_fr_record_last_buy['rdq_0_1st'] = str(pd_quote_temp.rdq_0_1st.iloc[0])[:10]
-            pd_fr_record = pd.concat([pd_fr_record, pd_fr_record_last_buy])
-            pd_holding.iloc[0] = ['free_cash', free_cash_current] + [None] * (len(pd_holding.keys()) - 2)
-            return pd_fr_record, pd_holding
-
-        def _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, value_buy, operate_type, pd_entry):
-            """
-
-            Args:
-                pd_fr_record:
-                pd_holding:
-                symbol:
-                rdq_b:
-                value_buy:
-                operate_type:
-                pd_entry (pandas.core.series.Series/dict):
-                    should contain the followed keys: symbol, rdq_0, rdq_pq4, eval_metric, num_p,
-                                                      rdq_0_1st(only for rebalance)
-
-            Returns:
-
-            """
-            bool_execute, rdq_0_1st = False, None
-            if value_buy < 0:
-                raise ValueError("value_buy can not be negative value.")
-            if (len(pd_holding) >= (n_stocks + 1)) & (symbol not in list(pd_holding.symbol)):
-                raise ValueError(f"Currently Holding {len(pd_holding) - 1} stocks, can't further purchase {symbol}\n"
-                                 f"Holidng stocks: {', '.join(list(pd_holding.symbol.iloc[1:]))}")
-            if pd_entry is not None:
-                if pd_entry['symbol'] != symbol:
-                    raise ValueError(f"Symbol of input pd_entry '{pd_entry['symbol']}' does not match with symbol input '{symbol}'")
-
-            if (symbol in list(pd_holding.symbol)) & (value_buy == 0):
-                # Just update the parameters
-                ind_array = pd_holding.symbol == symbol
-                rdq_0_1st, _shares, _cost, eval_metric_quantile = pd_holding.loc[ind_array].iloc[0][['rdq_0_1st', 'shares', 'cost', 'eval_metric_quantile']]
-                pd_holding.loc[ind_array] = [symbol, _shares, rdq_0_1st, rdq_b, pd_entry['rdq_pq4'],
-                                             pd_entry[eval_metric], pd_entry['num_p'], _cost, eval_metric_quantile]
-                bool_execute = True
-            else:
-                # Could be rebalance or new purchase, only difference is how to calculated the previous cost
-                free_cash = pd_holding.iloc[0].shares
-                pd_quote_temp = pd.DataFrame({'symbol': [symbol], 'rdq_0': [str(rdq_b)[:10]]})
-                pd_quote = stock_price.get_marketcap_time(pd_quote_temp, time_col='rdq_0')
-                marketcap_b = pd_quote.iloc[0].marketcap
-
-                pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
-                _value_total = pd_value_cal.value.sum()
-                _ratio_margin = 0 if bool_rebalance else ratio_margin
-                if (value_buy - free_cash) * 0.99999 > ((_ratio_margin + 1) * _value_total):
-                    raise ValueError(f"Too much margin applied current holding \n {pd_value_cal} \n "
-                                     f"Further want to purchase '{symbol}' value {round(value_buy)}")
-
-                if value_buy > 0:
-                    pd_holding.loc[pd_holding.symbol == 'free_cash', 'shares'] = free_cash - value_buy
-                    if symbol not in list(pd_holding.symbol):
-                        pd_holding_new = pd.DataFrame({'symbol': [symbol], 'shares': [value_buy / marketcap_b],
-                                                       'rdq_0_1st': pd_entry['rdq_0'], 'rdq_0': pd_entry['rdq_0'],
-                                                       'rdq_pq4': [pd_entry['rdq_pq4']], 'pred': [pd_entry[eval_metric]],
-                                                       'num_p': [pd_entry['num_p']], 'cost': value_buy,
-                                                       'eval_metric_quantile': pd_entry.eval_metric_quantile})
-                        pd_holding = pd.concat([pd_holding, pd_holding_new])
-
-                    else:
-                        # rebalance buy
-                        cost_pre, shares_pre = pd_holding.loc[pd_holding.symbol == symbol].iloc[0][['cost', 'shares']]
-                        shares_new = value_buy / marketcap_b
-                        pd_holding.loc[pd_holding.symbol == symbol, ['cost', 'shares']] = cost_pre + value_buy, shares_pre + shares_new
-
-                    bool_execute = True
-                    rdq_0_1st = rdq_b
-
-            if bool_execute:
-                if type(pd_entry) is pd.core.series.Series:
-                    _pd_temp = pd_entry.to_frame().T.copy()
-                    eval_metric_quantile = pd_entry.eval_metric_quantile
-                elif type(pd_entry) is dict:
-                    _pd_temp = pd.DataFrame({i: [pd_entry[i]] for i in pd_entry})
-                    eval_metric_quantile = pd_entry['eval_metric_quantile']
-                else:
-                    raise TypeError(f'Not able to recognize type of input pd_entry {type(pd_entry)}')
-
-                _pd_temp['datatype'] = operate_type
-                _pd_temp['rdq_0_1st'] = str(rdq_0_1st)[:10]
-                _pd_temp['eval_metric_quantile'] = eval_metric_quantile
-
-                pd_fr_record = pd.concat([pd_fr_record, _pd_temp])
-
-            return pd_fr_record, pd_holding
-
-        def sell_share(pd_fr_record, pd_holding, symbol, rdq_s, operate_type):
-
-            symbols_holding = list(pd_holding.iloc[1:].symbol)
-            if (symbol in symbols_holding) & (operate_type in ['sell', 'sell_blind', 'sell_replace']):
-                shares = pd_holding.loc[pd_holding.symbol == symbol].iloc[0].shares
-                pd_fr_record, pd_holding = _sell_share_basic(pd_fr_record, pd_holding, symbol, rdq_s, shares, operate_type)
-                if bool_rebalance & (operate_type not in ['sell_replace']):
-                    pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, pd_entry=None, rdq_b=rdq_s, operate_type='buy_rebalance')
-            elif (symbol is None) & (operate_type == 'sell_rebalance'):
-                # for sell_rebalance, symbol should be None
-                n_holding = len(symbols_holding)
-                if n_holding > 0:
-                    # Each stock sell the same percentage for cleaning up space for new stock purchase
-                    pd_value_cal = get_holding_value(pd_holding, rdq_s, bool_keep=False)
-                    free_cash = pd_value_cal.iloc[0].value
-                    _value_total = pd_value_cal.value.sum()
-                    free_cash_need = min(_value_total * ratio_max_hold, _value_total / (n_holding + 1))
-                    value_sell_total = free_cash_need - free_cash
-
-                    if value_sell_total > 0:
-                        ratio_sell_each = value_sell_total / pd_value_cal.iloc[1:].value.sum()
-                        for symbol in symbols_holding:
-                            shares_holding = pd_holding.loc[pd_holding.symbol == symbol].iloc[0]['shares']
-                            shares_sell = shares_holding * ratio_sell_each
-                            pd_fr_record, pd_holding = _sell_share_basic(pd_fr_record, pd_holding, symbol, rdq_s, shares=shares_sell,
-                                                                         operate_type='sell_rebalance')
-            else:
-                raise KeyError(f"Not able to recognize this operation, sell can only be used under two cases:\n"
-                               f"1. symbol is one in pd_holding, representing clean sell, operate_type should be in ['sell', 'sell_blind']\n"
-                               f"2. symbol is None operate_type is sell_rebalance. \n"
-                               f"Input symbol is '{symbol}', operate_type is '{operate_type}'")
-            return pd_fr_record, pd_holding
-
-        def buy_share(pd_fr_record, pd_holding, pd_entry, rdq_b, operate_type, value_buy_force=None):
-            """
-
-            Args:
-                pd_fr_record:
-                pd_holding:
-                pd_entry (pandas.core.series.Series/dict):
-                    should contain the followed keys symbol, rdq_0, rdq_pq4, eval_metric, num_p
-                rdq_b:
-                operate_type:
-
-            Returns:
-
-            """
-
-            if len(pd_holding) >= (n_stocks + 1):
-                # too many stock is being held, no purchase to be executed
-                return pd_fr_record, pd_holding
-
-            if (pd_entry is not None) & (operate_type in ['buy', 'buy_replace']):
-                symbol = pd_entry['symbol']
-                if symbol in list(pd_holding.symbol):
-                    pd_fr_record, pd_holding = _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, 0, 'refresh', pd_entry)
-                else:
-                    if bool_rebalance:
-                        # How much cap to be cleaned is determined in sell_share function
-                        if operate_type != 'buy_replace':
-                            pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol=None, rdq_s=rdq_b,
-                                                                  operate_type='sell_rebalance')
-                            pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
-                            _value_total = pd_value_cal.value.sum()
-                            free_cash = pd_value_cal.iloc[0].shares
-                            value_buy = min(free_cash, _value_total * ratio_max_hold)
-                        else:
-                            value_buy = value_buy_force
-
-                        pd_fr_record, pd_holding = _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, value_buy, operate_type, pd_entry)
-                    else:
-                        # ratio_margin is only applied when rebalance is deactivated
-                        # ratio_margin is only used when mean value can't be achieved using the available free cash
-                        pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
-                        _value_total = pd_value_cal.value.sum()
-                        free_cash = pd_value_cal.iloc[0].shares
-                        _value_mean = _value_total / n_stocks
-                        if free_cash > _value_mean:
-                            if len(pd_holding) == n_stocks:
-                                value_buy = free_cash
-                            else:
-                                value_buy = _value_mean
-                        else:
-                            _margin = _value_total * ratio_margin
-                            if free_cash > -_margin:
-                                value_buy = min(free_cash + _margin, _value_mean)
-                            else:
-                                value_buy = 0
-                        pd_fr_record, pd_holding = _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, value_buy, operate_type, pd_entry)
-
-            elif (pd_entry is None) & (operate_type == 'buy_rebalance'):
-
-                if len(pd_holding) != 1:
-                    free_cash = pd_holding.iloc[0].shares
-                    pd_value_cal = get_holding_value(pd_holding, rdq_b, bool_keep=False)
-                    _value_total = pd_value_cal.value.sum()
-
-                    pd_value_cal['value_goal'] = _value_total * ratio_max_hold
-                    pd_value_cal['value_add'] = pd_value_cal['value_goal'] - pd_value_cal['value']
-                    pd_value_cal_add = pd_value_cal.loc[(pd_value_cal['value_add'] > 0) & (pd_value_cal['symbol'] != 'free_cash')].copy()
-                    value_add_total = pd_value_cal_add['value_add'].sum()
-                    value_add_final_total = min(free_cash, value_add_total)
-                    pd_value_cal_add['value_add_final'] = pd_value_cal_add['value_add'] / value_add_total * value_add_final_total
-                    for ind in range(len(pd_value_cal_add)):
-                        pd_value_cal_add_entry = pd_value_cal_add.iloc[ind]
-                        symbol, value_add = pd_value_cal_add_entry[['symbol', 'value_add_final']]
-                        pd_entry = {i: pd_value_cal_add_entry[i] for i in ['symbol', 'rdq_0', 'rdq_pq4', 'pred', 'num_p', 'eval_metric_quantile']}
-                        pd_entry[eval_metric] = pd_value_cal_add_entry['pred']
-                        pd_fr_record, pd_holding = _buy_share_basic(pd_fr_record, pd_holding, symbol, rdq_b, value_add,
-                                                                    'buy_rebalance', pd_entry)
-
-            else:
-                raise KeyError(f"Not able to recognize this operation, sell can only be used under two cases:\n"
-                               f"1. pd_entry is None, operate_type is 'buy'\n"
-                               f"2. pd_entry is not None, operate_type is 'buy_rebalance'\n"
-                               f"Input pd_entry is '{pd_entry}', operate_type is '{operate_type}'")
-
-            return pd_fr_record, pd_holding
-
-        def swap_share(pd_fr_record, pd_holding, pd_entry, symbol_hold, symbol_new, rdq_buy):
-            pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol_hold, rdq_buy, 'sell_replace')
-            value_buy_force = pd_fr_record.iloc[-1]['c_return']
-            pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, pd_entry, rdq_buy, 'buy_replace', value_buy_force)
-            return pd_fr_record, pd_holding
-
         for i in range(len(pd_data_eval_operation)):
             free_cash = pd_holding.iloc[0]['shares']
             pd_entry = pd_data_eval_operation.iloc[i]
@@ -1366,7 +1394,7 @@ if 'Define Function' == 'Define Function':
                                 _bool_sell = True
                     if _bool_sell:
                         rdq_s = pd_entry['rdq_s']
-                        pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol, rdq_s, operate_type)
+                        pd_fr_record, pd_holding = transaction.sell_share(pd_fr_record, pd_holding, symbol, rdq_s, operate_type)
             elif operate_type == 'buy':
                 eval_metric_value = pd_entry[eval_metric]
                 rdq_buy = pd_entry['rdq_0']
@@ -1405,9 +1433,11 @@ if 'Define Function' == 'Define Function':
                                 _ind = pd_holding.symbol == symbol_hold
                                 symbol_new = pd_entry['symbol']
                                 # pd_fr_record, pd_holding = sell_share(pd_fr_record, pd_holding, symbol_hold, rdq_buy, 'replace')
-                                pd_fr_record, pd_holding = swap_share(pd_fr_record, pd_holding, pd_entry, symbol_hold, symbol_new, rdq_buy)
+                                pd_fr_record, pd_holding = transaction.swap_share(pd_fr_record, pd_holding, pd_entry,
+                                                                                  symbol_hold, rdq_buy)
                 if _bool_buy:
-                    pd_fr_record, pd_holding = buy_share(pd_fr_record, pd_holding, pd_entry, rdq_b=pd_entry['rdq_0'], operate_type='buy')
+                    pd_fr_record, pd_holding = transaction.buy_share(pd_fr_record, pd_holding, pd_entry,
+                                                                     rdq_b=pd_entry['rdq_0'], operate_type='buy')
                     _ind = (pd_data_eval_operation.datatype == 'sell_blind') & (pd_data_eval_operation.symbol == symbol)
 
                     if any(list(_ind)):
@@ -1440,7 +1470,7 @@ if 'Define Function' == 'Define Function':
                       ) - 1
         return weight_cal
 
-if __name__ == '__main__':
+if __name__ == '__main__0':
 
     #################################################
     # training hyperparameters
@@ -1452,23 +1482,23 @@ if __name__ == '__main__':
     coeff_fade = 0.9
     func_shift, func_power, std_adjust = 2, 2, 2
     features_exempt = ['num', 'num_p', 'revenue_0_growth_quantile', 'book_value_0_growth_quantile']
-    n_threads, regr_type, predict_method = 1, 'xgboost_RF', 'sklearn'
+    n_threads, regr_type, predict_method = 1, 'sklearn_RF', 'sklearn'
     learning_rate_min, learning_rate_max, booster = 1, 1, 'gbtree'
     n_estimators_range, max_depth_range, subsample_range = [75, 75], [5, 5], [0.85, 0.85]
     min_samples_split, min_samples_leaf = 2, 1
     training_num_p_min = 0.75
-    _decision_time_start, _decision_time_end = '1999-01-01', '2021-12-31'
+    _decision_time_start, _decision_time_end = '1999-01-01', '2002-03-31'
     bool_pseudo = True
-    n_trials = 15
+    n_trials = 1
     n_regr = 1
-    aug_size_train, aug_sigma_train = 25, 0.1
-    aug_size_pseudo, aug_sigma_pseudo = 4, 0.1
+    aug_size_train, aug_sigma_train = 20, 0.1
+    aug_size_pseudo, aug_sigma_pseudo = 3, 0.1
     major_feature = 'book_value'
 
     #################################################
     # execution hyper-parameters
     eval_metric = 'log_growth_mc_pred_median'
-    bool_replace = True
+    bool_replace = False
     rate_depreciation = 0.2
     rate_step_switch = 0
     ratio_threshold_sell = -0.075
@@ -1479,7 +1509,7 @@ if __name__ == '__main__':
     bool_metric_recalculate = True
     replace_span_month, hold_span_month = 3, 15
     n_stocks = 4
-    aug_size_pred, aug_sigma_pred = 25, 0.1
+    aug_size_pred, aug_sigma_pred = 20, 0.1
     min_growth, max_growth, max_pb_1, max_pb_2, growth_slope, pb_slope = 0.2, 20, 35, 65, 10, 1
     adj_metric = 0
 
@@ -1855,12 +1885,12 @@ if 'a' == 'b':
     ax[2].set_xlabel('(buy data) Predicted growth')
     ax[2].set_ylabel('Acutal growth')
     fig.tight_layout()
-# pd_fr_record_copy, pd_holding_copy = pd_fr_record.copy(), pd_holding.copy()
-# pd_fr_record, pd_holding = pd_fr_record_copy.copy(), pd_holding_copy.copy()
+
 if 'a' == 'b':
-    with open(f'result/dict_save_data_05.pkl', 'rb') as handle:
+    with open(f'result/dict_save_data_06.pkl', 'rb') as handle:
         dict_data = pickle.load(handle)
     pd_holding_record_final = dict_data['pd_holding_record_final']
+    pd_fr_record_final = dict_data['pd_fr_record_final']
     pd_holding_ori = pd_holding_record_final.loc[pd_holding_record_final.symbol != 'free_cash']
     merge_cols = ['decision_time_end', 'symbol']
     pd_holding_filter = pd_holding_ori.groupby(merge_cols).size().rename('num').reset_index()
@@ -1870,3 +1900,65 @@ if 'a' == 'b':
 
     pd_holding = pd_holding_ori.merge(pd_holding_filter[merge_cols], on=merge_cols, how='inner')
     pd_holding = pd_holding.sort_values(by=['decision_time_end', 'symbol'])
+    keys_pd_fr_record = ['symbol', 'rdq_0', 'decision_time', 'rdq_operate']
+    pd_fr_record_buy = pd_fr_record_final.loc[pd_fr_record_final.datatype.isin(['buy', 'buy_replace'])][keys_pd_fr_record].drop_duplicates()
+    pd_fr_record_buy = pd_fr_record_buy.rename(columns={'decision_time': 'decision_time_end'})
+    pd_fr_record_buy = pd_holding_filter.merge(pd_fr_record_buy, on=['decision_time_end', 'symbol'], how='inner')
+    pd_fr_record_buy = pd_fr_record_buy.sort_values(by=['decision_time_end', 'rdq_operate'])
+
+if 'a' == 'b':
+    with open(f'result/dict_save_data_06.pkl', 'rb') as handle:
+        dict_data = pickle.load(handle)
+
+    transaction = Transaction()
+    _dict_transform = dict_data['pd_transform_save'].iloc[0]['dict_transform_hyper']
+
+    pd_holding_record_final = dict_data['pd_holding_record_final']
+    pd_fr_record_final = dict_data['pd_fr_record_final']
+    pd_buy_sell = pd_fr_record_final.loc[pd_fr_record_final.datatype.isin(['buy', 'buy_replace', 'sell', 'sell_blind', 'sell_replace'])]
+    pd_buy_sell = pd_buy_sell.loc[~pd_buy_sell.datafqtr.isna()]
+    pd_buy_sell = pd_buy_sell.sort_values(by=['rdq_operate', 'datatype', 'trial'])
+
+    decision_time_list = sorted(pd_fr_record_final.decision_time.unique())
+    pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None],
+                               'rdq_0': [None], 'rdq_pq4': [None], 'pred': [None], 'num_p': [None], 'cost': [None],
+                               'eval_metric_quantile': [None]})
+    pd_fr_record = pd_fr_record_final.iloc[[0]]
+    trial_list = sorted(pd_buy_sell.trial.unique())
+    dict_pd_holding = {_: pd_holding.copy() for _ in trial_list}
+    dict_pd_fr_record = {_: pd.DataFrame({'decision_time': []}) for _ in trial_list}
+    time_start, i_rdq_operate = time.time(), 0
+
+
+    rdq_operate_list = sorted(pd_buy_sell.rdq_operate.unique())
+    for rdq_operate in rdq_operate_list:
+        i_rdq_operate += 1
+        pd_filter_1 = pd_buy_sell.loc[pd_buy_sell.rdq_operate == rdq_operate]
+        _trial_list = sorted(pd_filter_1.trial.unique())
+        for trial in _trial_list:
+            pd_trial = pd_filter_1.loc[pd_filter_1.trial == trial]
+            pd_trial_replace = pd_trial.loc[pd_trial.datatype.str.contains('replace')].sort_values(by='datatype')
+            pd_trial_buy = pd_trial.loc[pd_trial.datatype == 'buy']
+            pd_trial_sell = pd_trial.loc[pd_trial.datatype.isin(['sell', 'sell_blind'])]
+            for i_sell in range(len(pd_trial_sell)):
+                pd_trans = pd_trial_sell.iloc[i_sell]
+                symbol, operate_type = pd_trans[['symbol', 'datatype']]
+                dict_pd_fr_record[trial], dict_pd_holding[trial] = transaction.sell_share(dict_pd_fr_record[trial], dict_pd_holding[trial],
+                                                                                          symbol, rdq_operate, operate_type)
+            for i_buy in range(len(pd_trial_buy)):
+                pd_trans = pd_trial_buy.iloc[i_buy]
+                operate_type = pd_trans['datatype']
+                dict_pd_fr_record[trial], dict_pd_holding[trial] = transaction.buy_share(dict_pd_fr_record[trial], dict_pd_holding[trial],
+                                                                                         pd_trans, rdq_operate, operate_type)
+            for i_replace in range(int(len(pd_trial_replace) / 2)):
+                pd_trans = pd_trial_replace.iloc[i_replace]
+                pd_trans_sell = pd_trial_replace.iloc[int(len(pd_trial_replace) / 2) + i_replace]
+                symbol_hold = pd_trans_sell['symbol']
+                dict_pd_fr_record[trial], dict_pd_holding[trial] = transaction.swap_share(dict_pd_fr_record[trial], dict_pd_holding[trial],
+                                                                                          pd_trans, symbol_hold, rdq_operate)
+        time_span = round(time.time() - time_start, 1)
+        print(f'\rTime {time_span} s - progress {i_rdq_operate}/{len(rdq_operate_list)}', end='')
+
+        # pd_holding = dict_pd_holding[trial].copy()
+        # pd_entry = pd_trans
+        # _, pd_holding_output = transaction.swap_share(pd_fr_record, pd_holding, pd_trans, symbol_hold, rdq_operate)
