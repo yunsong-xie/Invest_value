@@ -2,18 +2,14 @@ __author__ = 'Yunsong Xie'
 __email__ = 'xiefinance00@gmail.com'
 __company__ = 'Xie Finance LLC'
 
-import re, os, sys, datetime, sqlite3
+import os, datetime, sqlite3, time, glob, pickle
 import numpy as np
 import pandas as pd
-import time, glob, threading
-import queue
-import concurrent.futures
 from matplotlib import pyplot as plt
 import lib as common_func
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-import xgboost, scipy
+from sklearn.ensemble import RandomForestRegressor
+import xgboost
 import multiprocessing as mp
-import pickle
 
 pd.set_option('display.max_column', 75)
 pd.set_option('display.max_colwidth', 2400)
@@ -32,26 +28,26 @@ except:
 
 
 if 'Define Function' == 'Define Function':
-    def convert_decision_time(decision_time):
-        if type(decision_time) in [float, int]:
-            if decision_time < 1900:
-                raise ValueError("decision_time has to be the recent year")
-            else:
-                _year, _days = int(decision_time // 1), (decision_time - decision_time // 1) * 361
-                _month = str(max(int(_days // 30), 1)).rjust(2, '0')
-                _day = str(max(round(int(_days % 30)), 1)).rjust(2, '0')
-                decision_time_final = f'{_year}-{_month}-{_day}'
-        else:
-            _info = decision_time.split('-')
-            if len(_info) == 1:
-                decision_time_final = f'{_info[0]}-01-01'
-            elif len(_info) == 2:
-                decision_time_final = f'{_info[0]}-{_info[1]}-01'
-            else:
-                decision_time_final = decision_time
-        return decision_time_final
 
     def y_transform(y, direction='encode', func_shift=1, func_power=2, dict_transform=None):
+        """
+        Transform the y label by using "Y = (y + func_shift) ^ func_power" function, this is to enlarge the high gainer impact.
+        Then this transformed Y is normalized
+        Args:
+            y (numpy.array): Y or y to be processed
+            direction (str): either "encode" or "decode", self-explanatory
+            func_shift (float/int): linear shifting parameter
+            func_power (float/int): Exponential transform parameter
+            dict_transform (dict): data transform data hub
+
+        Returns:
+            in case of encoding:
+                (numpy.array): transformed Y
+                (float): Mean of Y before normalization
+                (float): STD of Y before normalization
+            in case of decoding:
+                (numpy.array): transformed y
+        """
         if direction.lower() == 'encode':
             y_output = (y + func_shift) ** func_power
             median = np.quantile(y_output, 0.5)
@@ -65,13 +61,15 @@ if 'Define Function' == 'Define Function':
         else:
             raise ValueError(f'direction can only be either encode or decode, input is {direction}')
 
-    def prepage_training_data(pd_data_train, ):
+    def prepare_training_data(pd_data_train):
         """
-
+        Prepare the data for model training, no normalizations. In original data from database each entry contains multiple quarter
+        price data. After processed by this function each entry only contains one priced price with number of quarter being "num_p"
         Args:
-            pd_data_train:
-            :
+            pd_data_train (pandas.dataframe): raw data from db database, each entry includes multiple quarter price data
 
+        return (pandas.dataframe): columns include features to be used in model fitting. Split the data entries
+                                to become only contains only one predicted price.
         """
         pd_data_train['num_min'] = (pd_data_train[['num_valid', 'num']].values.min(axis=1) * 4).astype(int)
         pd_train_list = []
@@ -92,6 +90,17 @@ if 'Define Function' == 'Define Function':
         return pd_train
 
     def prepare_features(pd_data, dict_transform, data_type='training'):
+        """
+        Prepare data for final training.
+        Args:
+            pd_data (pandas.dataframe): Input data from prepare_training_data function
+            dict_transform:
+            data_type:
+
+        Returns:
+            (pandas.dataframe): transformed data
+            (list): features_x: features can, but not have to, be used in training
+        """
         coeff_fade = dict_transform['coeff_fade']
         if data_type == 'training':
             p_feature = 'marketcap_p'
@@ -135,7 +144,7 @@ if 'Define Function' == 'Define Function':
         features_x = [i for i in pd_mdata.columns if 'mc_bv' in i] + [i for i in features_add if i != 'num']
 
         for feature in features_growth:
-            for i_year in range(n_year_x - 1):
+            for i_year in range(dict_transform['n_year_x'] - 1):
                 feature_x = f'{feature}_growth_{i_year}'
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'{feature}_{i_year + 1}'])
                 features_x.append(feature_x)
@@ -145,7 +154,7 @@ if 'Define Function' == 'Define Function':
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_q{i_quarter}'] / pd_data[f'{feature}_q{i_quarter + 4}'])
                 features_x.append(feature_x)
 
-        for i_year in range(n_year_x):
+        for i_year in range(dict_transform['n_year_x']):
             for feature in features_bvr_year:
                 feature_x = f'bvr_{feature}_{i_year}'
                 pd_mdata[feature_x] = list(pd_data[f'{feature}_{i_year}'] / pd_data[f'{major_feature}_{i_year}'])
@@ -159,7 +168,22 @@ if 'Define Function' == 'Define Function':
         return pd_mdata, features_x
 
     def get_model_sklearn(pd_train, pd_pseudo, dict_transform, seed=None):
+        """
+        Main computation function. It does the followed functions:
+            1. Transform the feature to normal distribution by doing log-gaussian transformation
+            2. Feature selection
+            3. Construct the model
+            4. Fit the model
+        Args:
+            pd_train (pandas.dataframe): Training dataset
+            pd_pseudo (pandas.dataframe): pseudo training dataset, no Y label used in this dataset
+            dict_transform (dict): input transform, the mean, std transformation info will be added to this dict for output
+            seed (int): random seed
 
+        Returns:
+            (dict): dict_transform, contains all info needed for reconstruct the feature
+            (list): list of fitted model, for using test time augmentation
+        """
         if seed is not None:
             np.random.seed(seed)
         func_shift, func_power = dict_transform['func_shift'], dict_transform['func_power']
@@ -265,6 +289,21 @@ if 'Define Function' == 'Define Function':
         return dict_transform, regr_list
 
     def sklearn_training_thread(pd_mdata, pd_estimator_thread, dict_transform_thread, i_queue=None, mp_queue=None):
+        """
+        A complete function that fitting the model(s). If multiple model to be fitted, each model parameters
+        should be included in pd_estimator_thread
+        Args:
+            pd_mdata (pandas.dataframe): prepared data for model fitting, it could contain more features
+            pd_estimator_thread (pandas.dataframe): in case in this thread multiple models to be used, each model should
+                                                has its feature described as one feature in this dataframe
+            dict_transform_thread (dict): main data transform info pack, at least includes features_x_select that describe the
+                                        features to be used in final fitting
+            i_queue (int): ID of this thread
+            mp_queue (multiprocessing.queue): for data transfer among threads
+
+        Returns:
+            (list): list of fitting model
+        """
 
         def add_aug_data(pd_mdata, dict_transform_thread, datatype):
             pd_mdata_cal = pd_mdata.loc[pd_mdata.datatype == datatype]
@@ -343,6 +382,21 @@ if 'Define Function' == 'Define Function':
             mp_queue.put(regr_list)
 
     def get_prediction(pd_data, dict_transform, regr_list):
+        """
+        Get prediction result as for input data. Because test-time-augmentation is used output contains
+        mean, median, and std for each prediction
+        Args:
+            pd_data (pandas.dataframe): data that has been processed by prepare_training_data function, each entry should only
+                contains one predicted quarter rdq, it should also contain feature "num_p".
+            dict_transform (dict): main data transform info pack, at least includes features_x_select that describe the
+                features to be used in final fitting
+            regr_list (list): list of fitted models
+
+        Returns:
+            (numpy.array): y_pred_mean
+            (numpy.array): y_pred_median
+            (numpy.array): y_pred_std
+        """
         if type(regr_list) is list:
             regr_list = regr_list
         else:
@@ -391,19 +445,6 @@ if 'Define Function' == 'Define Function':
         y_pred_median = y_pred_median + cal_trading_weight(pd_data, dict_transform) * dict_transform['adj_metric']
         return y_pred_mean, y_pred_median, y_pred_std
 
-    def e2e_pred_data(pd_data, dict_transform, regr_list, n_sigma=2):
-        log_grow_pred_mean, log_grow_pred_median, log_grow_pred_std = get_prediction(pd_data, dict_transform, regr_list)
-        head_keys = ['symbol', 'datafqtr', dict_transform['p_feature_decision'], 'marketcap_0', 'log_growth_mc', 'log_growth_mc_pred_min',
-                     'log_growth_mc_pred_median', 'log_growth_mc_pred_mean', 'log_growth_mc_pred_std']
-        pd_data['log_growth_mc_pred_mean'] = log_grow_pred_mean
-        pd_data['log_growth_mc_pred_median'] = log_grow_pred_median
-        pd_data['log_growth_mc_pred_std'] = log_grow_pred_std
-        pd_data['log_growth_mc_pred_min'] = log_grow_pred_mean - log_grow_pred_std * n_sigma
-
-        pd_data['log_growth_mc'] = np.log10(pd_data[dict_transform['p_feature_decision']] / pd_data['marketcap_0'])
-        pd_data = pd_data[head_keys + [i for i in pd_data.columns if i not in head_keys]]
-        return pd_data
-
     def date_month_convertion(data, bool_end=False):
         """
         Convert between 'yyyy-mm-dd' and number of months
@@ -435,10 +476,22 @@ if 'Define Function' == 'Define Function':
             output = int(data[:4]) * 12 + int(data[5:7]) - 1
         return output
 
-    def get_holding_value(pd_holding, decision_time_end, bool_keep=False):
+    def get_holding_value(pd_holding, decision_time_end=None, bool_keep=False):
+        """
+        Get the current holding value.
+        Args:
+            pd_holding (pandas.dataframe): Holding status, should at least contains column of "symbol" and "share"
+            decision_time_end (str): Time to pull the value info. if None, current date is used
+            bool_keep (bool): Whether to keep the all transitional columns
+
+        Returns:
+            (pandas.dataframe): data with value column
+        """
         keys = list(pd_holding.keys())
         _pd_holding_record = pd_holding.copy()
-        if type(decision_time_end) is str:
+        if decision_time_end is None:
+            decision_time_end = str(datetime.datetime.now())[:10]
+        elif type(decision_time_end) is str:
             decision_time_end = decision_time_end[:10]
         else:
             decision_time_end = str(decision_time_end)[:10]
@@ -452,6 +505,17 @@ if 'Define Function' == 'Define Function':
         return _pd_holding_record
 
     def add_quantile_info(pd_base, ratio_stock_select, ratio_stock_select_span_year):
+        """
+        Calculate the growth quantile info in the past specified time period.
+        Args:
+            pd_base (pandas.dataframe): data to compute the quantile
+            ratio_stock_select (float): This function can compute the growth threshold of specified preriod of time. This is where
+                to specify the growth threshold
+            ratio_stock_select_span_year (float/int): Specify the period of time
+
+        Returns:
+            (pandas.dataframe): Modifed dataframe that contains the growth quantile and theshold info.
+        """
         np_data = pd_base[['rdq_0', 'revenue_0_growth', 'book_value_0_growth'] + ['marketcap_0'] * 5].values
         np_data[:, 0] = pd.to_datetime(np_data[:, 0])
         np_data[:, [1, 2]] = np_data[:, [1, 2]].astype(float).round(5)
@@ -479,47 +543,6 @@ if 'Define Function' == 'Define Function':
         new_keys = keys[ind_end+1:]
 
         return pd_base, new_keys
-
-    def prepare_pd_data_operate(pd_base, _pd_data, new_keys_growth):
-        _rank_array_4 = np.asarray(pd_base['rank'])
-        dict_rank_array = {i: set(_rank_array_4 - i + 4) for i in (np.arange(4) + 1)}
-        _rank_array_pool, pd_data_list = set(), []
-        for i in sorted(dict_rank_array, reverse=True):
-            if i == 4:
-                _rank_array_pool.update(dict_rank_array[i])
-            else:
-                dict_rank_array[i] = dict_rank_array[i] - _rank_array_pool
-                _rank_array_pool = _rank_array_pool.union(set(dict_rank_array[i]))
-            pd_data_entry = _pd_data.loc[_pd_data['rank'].isin(dict_rank_array[i])].copy()
-            pd_data_entry['num_valid'] = i / 4
-            # num_valid represents which growing state is the stock is in,
-            # 1 means it meets the standard of full growth last quarter
-            # 0.25 means it has not meet the standard for 3 quarters
-
-            if i == 4:
-                pd_data_entry['status'] = 'valid'
-            else:
-                pd_data_entry['status'] = None
-            pd_data_list.append(pd_data_entry)
-        pd_data_operate = pd.concat(pd_data_list).sort_values(by=['rdq_0', 'symbol']).copy()
-        pd_data_operate['year'] = pd_data_operate['rdq_0'].str[:4].astype(int)
-        head_keys = ['symbol', 'datafqtr', 'num_valid', 'year']
-        pd_data_operate = pd_data_operate[head_keys + [i for i in pd_data_operate.columns if i not in head_keys]]
-
-        pd_temp = pd_base[['rank'] + new_keys_growth].copy()
-        pd_temp_list = []
-        for i in range(4):
-            pd_temp_1 = pd_temp.copy()
-            pd_temp_1['rank_ori'] = pd_temp_1['rank']
-            pd_temp_1['rank'] = pd_temp_1['rank'] + i
-            pd_temp_list.append(pd_temp_1)
-        pd_temp_2 = pd.concat(pd_temp_list)
-        pd_temp_3 = pd_temp_2.groupby('rank')['rank_ori'].min().reset_index()
-        pd_base_right = pd_temp.rename(columns={'rank': 'rank_ori'}).merge(pd_temp_3, on='rank_ori', how='right')
-        pd_base_right = pd_base_right[[i for i in pd_base_right.columns if i != 'rank_ori']]
-
-        pd_data_operate = pd_data_operate.merge(pd_base_right, on='rank', how='inner')
-        return pd_data_operate
 
     class Transaction:
         def __init__(self, dict_transform):
@@ -558,6 +581,20 @@ if 'Define Function' == 'Define Function':
             return pd_fr_record, pd_holding
 
         def _sell_share_basic(self, pd_fr_record, pd_holding, symbol, rdq_s, shares, operate_type):
+            """
+            Basic selling function. need to specify how may share to sell
+            Args:
+                pd_fr_record (pandas.dataframe): previous financial transaction record
+                pd_holding (pandas.dataframe): previous stock holding status
+                symbol (str): symbol to sell
+                rdq_s (str): date of selling
+                shares (float): Shares to be sold
+                operate_type (str): type of this transaction
+
+            Returns:
+                (pandas.dataframe): new financial transaction record
+                (pandas.dataframe): new stock holding status
+            """
             if 'pandas' in str(type(rdq_s)):
                 sell_date = str(rdq_s)[:10]
             elif (type(rdq_s) is str) & (len(str(rdq_s)) == 10):
@@ -606,17 +643,19 @@ if 'Define Function' == 'Define Function':
 
         def _buy_share_basic(self, pd_fr_record, pd_holding, symbol, rdq_b, value_buy, operate_type, pd_entry):
             """
+            Basic buying function. Need to specify the value to buy
             Args:
-                pd_fr_record:
-                pd_holding:
-                symbol:
-                rdq_b:
-                value_buy:
-                operate_type:
+                pd_fr_record (pandas.dataframe): previous financial transaction record
+                pd_holding (pandas.dataframe): previous stock holding status
+                pd_entry (pandas.core.series.Series/dict): should contain the followed keys symbol, rdq_0, rdq_pq4, eval_metric, num_p
+                rdq_b (str): date of buying
+                value_buy (float): value to by
+                operate_type (str): type of this transaction
                 pd_entry (pandas.core.series.Series/dict):
-                    should contain the followed keys: symbol, rdq_0, rdq_pq4, eval_metric, num_p,
-                                                      rdq_0_1st(only for rebalance)
+                    should contain the followed keys: symbol, rdq_0, rdq_pq4, eval_metric, num_p, rdq_0_1st(only for rebalance)
             Returns:
+                (pandas.dataframe): new financial transaction record
+                (pandas.dataframe): new stock holding status
             """
             bool_execute, rdq_0_1st = False, None
             if value_buy < 0:
@@ -688,7 +727,20 @@ if 'Define Function' == 'Define Function':
             return pd_fr_record, pd_holding
 
         def sell_share(self, pd_fr_record, pd_holding, symbol, rdq_s, operate_type, bool_simple=False):
+            """
+            Comprehensive selling function. Depend of the operate type, decide whether to do balance buy
+            Args:
+                pd_fr_record (pandas.dataframe): previous financial transaction record
+                pd_holding (pandas.dataframe): previous stock holding status
+                symbol (str): symbol to sell
+                rdq_s (str): date of selling
+                operate_type (str): type of this transaction
+                bool_simple (boolean): Whether to do a simple holding change
 
+            Returns:
+                (pandas.dataframe): new financial transaction record
+                (pandas.dataframe): new stock holding status
+            """
             symbols_holding = list(pd_holding.iloc[1:].symbol)
             if (symbol is not None) & (symbol not in symbols_holding):
                 raise ValueError(f"{symbol} is not in pd_holding:\n{pd_holding}")
@@ -729,16 +781,18 @@ if 'Define Function' == 'Define Function':
 
         def buy_share(self, pd_fr_record, pd_holding, pd_entry, rdq_b, operate_type, value_buy_force=None, bool_simple=False):
             """
+            Comprehensive buying function. Depend of the operate type, decide whether to do balance sell
             Args:
-                pd_fr_record:
-                pd_holding:
-                pd_entry (pandas.core.series.Series/dict):
-                    should contain the followed keys symbol, rdq_0, rdq_pq4, eval_metric, num_p
-                rdq_b:
-                operate_type:
+                pd_fr_record (pandas.dataframe): previous financial transaction record
+                pd_holding (pandas.dataframe): previous stock holding status
+                pd_entry (pandas.core.series.Series/dict): should contain the followed keys symbol, rdq_0, rdq_pq4, eval_metric, num_p
+                rdq_b (str): date of buying
+                operate_type (str): type of this transaction
                 value_buy_force (float/int): The exact buy value for this operation
                 bool_simple (boolean): Whether to do a simple holding change
             Returns:
+                (pandas.dataframe): new financial transaction record
+                (pandas.dataframe): new stock holding status
             """
 
             if len(pd_holding) >= (self.n_stocks + 1):
@@ -844,7 +898,21 @@ if 'Define Function' == 'Define Function':
             return pd_fr_record, pd_holding
 
     def invest_period_operation(pd_fr_record, pd_holding, pd_data_operate, dict_decision_time, transaction, seed=None):
+        """
+        Main invest function, contains entire one cycle of evaluation process.
+        Args:
+            pd_fr_record (pandas.dataframe): Previous financial transaction record
+            pd_holding (pandas.dataframe): Previous stock holding status
+            pd_data_operate (pandas.dataframe): The entries that have financial record reported. They either fit the buying criterial or
+                previous meets buying criterial, now needs to evaluate whether needs to sell.
+            dict_decision_time (dict): Contains "start" and "end" key to define the transaction time period.
+            transaction (Transaction): Transaction class
+            seed (int): random seet
 
+        Returns:
+            (pandas.dataframe): pd_fr_record - new financial transaction record
+            (pandas.dataframe): pd_holding - new stock holding status
+        """
         # seed = 0
         # pd_holding = pd.DataFrame({'symbol': ['free_cash'], 'shares': [10000], 'rdq_0_1st': [None], 'rdq_0': [None], 'rdq_pq4': [None],
         #                           'pred': [None], 'num_p': [None], 'cost': [None], 'eval_metric_quantile': [None]})
@@ -930,7 +998,7 @@ if 'Define Function' == 'Define Function':
             keys_pre = head_keys + [i for i in pd_data_eval.columns if i not in head_keys]
             pd_data_eval = pd_data_eval[[i for i in keys_pre if i in pd_data_eval.columns]]
 
-            pd_train_pseudo = prepage_training_data(pd_data_train)
+            pd_train_pseudo = prepare_training_data(pd_data_train)
             pd_train = pd_train_pseudo.loc[pd_train_pseudo.num_p >= training_num_p_min]
             pd_pseudo = pd_train_pseudo.loc[(pd_train_pseudo.num_p < training_num_p_min) & (pd_train_pseudo.num_valid >= training_num_p_min) &
                                             (pd_train_pseudo.rdq_0 >= pd_train.rdq_0.max())].copy()
@@ -1115,6 +1183,15 @@ if 'Define Function' == 'Define Function':
         return pd_fr_record, pd_holding, dict_transform_save
 
     def cal_trading_weight(pd_data, dict_transform):
+        """
+        Calculate the holding weight of each stock.
+        Args:
+            pd_data (pandas.dataframe): Input dataframe, should contain growth and marketcap info.
+            dict_transform (dict): transform data hub
+
+        Returns:
+            (numpy.array):
+        """
         major_feature, min_growth, max_growth = dict_transform['major_feature'], dict_transform['min_growth'], dict_transform['max_growth']
         growth_slope, max_pb_1, max_pb_2 = dict_transform['growth_slope'], dict_transform['max_pb_1'], dict_transform['max_pb_2']
         pb_slope = dict_transform['pb_slope']
@@ -1193,6 +1270,17 @@ if 'Define Function' == 'Define Function':
         return pd_holding_mrg_raw_copy
 
     def find_rdq_operate(trial, rdq_operate, dict_hold):
+        """
+        This is for operation reconstructure function, to find the actual operating date based on holding status
+        Algorithm: if rdq_operate in dict_dict[trial], return dict_dict[trial][rdq_operate] Eitherwise, return the closest rdq date
+        Args:
+            trial (int): trial info
+            rdq_operate (str): yyyy-mm-dd form
+            dict_hold (dict): A dict of pd_holding - the holding status, key is trial.
+
+        Returns:
+            (pandas.dataframe): the pd_holding at the found rdq_operate
+        """
         rdq_operate_close = None
         if rdq_operate in dict_hold[trial]:
             rdq_operate_close = rdq_operate
@@ -1270,7 +1358,6 @@ if __name__ == '__main__0':
 
         with open(dict_filename_modified, 'wb') as handle:
             pickle.dump(dict_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 
 if 'a' == 'b':
 
@@ -1354,3 +1441,55 @@ if 'plot distribution' == 'a':
         ax[i].set_xlim(0.16, 0.30)
 
     fig.tight_layout()
+
+if 'Compare conditions' == 'a':
+
+    ind_list = [7, 10, 11]
+    dict_pd_value, dict_transform_data = {}, {}
+    for ind_int in ind_list:
+        ind_str = str(ind_int).rjust(2, '0')
+        dict_filename = f'result/dict_save_data_{ind_str}.pkl'
+        with open(dict_filename, 'rb') as handle:
+            _dict_data = pickle.load(handle)
+            dict_pd_value[ind_str] = _dict_data['pd_value']
+            dict_transform_data[ind_str] = _dict_data['dict_transform_hyper']
+
+    ind_str_list = [str(_).rjust(2, '0') for _ in ind_list]
+    for ind_str in ind_str_list:
+        _growth_rate_mean = round(dict_pd_value[ind_str].annual_growth.mean() * 100, 1)
+        _growth_rate_std = round(dict_pd_value[ind_str].annual_growth.std() * 100, 1)
+        print(f"{ind_str} - annual growth - mean: {_growth_rate_mean}% - std: {_growth_rate_std}")
+
+    keys = {'ind_comp'}
+    keys_exclude = {'features_x'}
+    for ind_comp in dict_transform_data:
+        _key_set = set(dict_transform_data[ind_comp].keys())
+        keys.update(_key_set)
+    keys = keys.difference(keys_exclude)
+    dict_comp = {_: [] for _ in keys}
+
+    for ind_comp in dict_transform_data:
+        dict_comp['ind_comp'].append(ind_comp)
+        for key in keys.difference({'ind_comp'}):
+            if key in dict_transform_data[ind_comp]:
+                dict_comp[key].append(dict_transform_data[ind_comp][key])
+            else:
+                dict_comp[key].append(None)
+
+    pd_comp = pd.DataFrame(dict_comp).set_index('ind_comp').T
+
+    bool_list = []
+    for index in pd_comp.index:
+        _value1 = pd_comp[ind_str_list[0]][index]
+        _value2 = pd_comp[ind_str_list[1]][index]
+        _bool = _value1 == _value2
+        if isinstance(_bool, bool):
+            bool_list.append(_bool)
+        else:
+            _bool = _bool & (len(_value1) == len(_value2))
+            bool_list.append(all(_bool))
+
+    # pd_comp_diff = pd_comp.loc[pd_comp[ind_str_list[0]] != pd_comp[ind_str_list[1]]]
+    pd_comp_diff = pd_comp.copy()
+    pd_comp_diff['bool'] = bool_list
+    pd_comp_diff.loc[~pd_comp_diff['bool']]

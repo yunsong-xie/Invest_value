@@ -2,16 +2,14 @@ __author__ = 'Yunsong Xie'
 __email__ = 'xiefinance00@gmail.com'
 __company__ = 'Xie Finance LLC'
 
-import re, os, sys, datetime, sqlite3
+import os, datetime, sqlite3, pickle, time, glob
 import numpy as np
 import pandas as pd
-import time, glob, threading
 from matplotlib import pyplot as plt
 import lib as common_func
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-import xgboost, scipy
+import xgboost
 import multiprocessing as mp
-import pickle
 
 pd.set_option('display.max_column', 75)
 pd.set_option('display.max_colwidth', 2400)
@@ -1500,12 +1498,12 @@ if __name__ == '__main__':
     n_estimators_range, max_depth_range, subsample_range = [75, 75], [5, 5], [0.85, 0.85]
     min_samples_split, min_samples_leaf = 2, 1
     training_num_p_min = 0.75
-    _decision_time_start, _decision_time_end = '2021-10-01', '2021-12-31'
+    _decision_time_start, _decision_time_end = '1999-01-01', '2021-12-31'
     bool_pseudo = True
     n_trials = 1
     n_regr = 1
-    aug_size_train, aug_sigma_train = 100, 0.1
-    aug_size_pseudo, aug_sigma_pseudo = 15, 0.1
+    aug_size_train, aug_sigma_train = 20, 0.1
+    aug_size_pseudo, aug_sigma_pseudo = 3, 0.1
     major_feature = 'book_value'
 
     #################################################s
@@ -1522,7 +1520,7 @@ if __name__ == '__main__':
     bool_metric_recalculate = True
     replace_span_month, hold_span_month = 3, 15
     n_stocks = 4
-    aug_size_pred, aug_sigma_pred = 100, 0.1
+    aug_size_pred, aug_sigma_pred = 20, 0.1
     min_growth, max_growth, max_pb_1, max_pb_2, growth_slope, pb_slope = 0.2, 20, 35, 65, 10, 1
     adj_metric = 0
 
