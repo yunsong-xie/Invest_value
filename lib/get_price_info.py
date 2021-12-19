@@ -1286,6 +1286,8 @@ class StockPrice(StockEarning):
         batch_cur_size = 0
         label_global_update = False
         count_repull = 0
+        n_trials = 3
+        symbols_failed = []
 
         def upload_price(_pd_price_upload_list):
             """
@@ -1320,7 +1322,6 @@ class StockPrice(StockEarning):
             pd_listing_entry = self.pd_listing.loc[self.pd_listing.symbol == symbol]
 
             is_updated = False
-            label_reload_for_split = False
             if len(pd_listing_entry) == 0:
                 ipo_date = time_hard_start
             else:
@@ -1344,7 +1345,17 @@ class StockPrice(StockEarning):
 
             if not is_updated:
                 query_date_start = unix2date(date2unix(last_date) + 3600 * 24)[:10]
-                pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
+                trial_count, bool_try = 0, True
+                while (trial_count < n_trials) & bool_try:
+                    try:
+                        pd_price = self.get_price_range(symbol, date_start=query_date_start, source='online').copy()
+                        bool_try = False
+                    except ValueError as _:
+                        trial_count += 1
+                if bool_try:
+                    symbols_failed.append(symbol)
+                    print(' - data pulling failed')
+                    continue
 
                 # First check whether whether there has been a split recently, if so, need to reload from IPO date
                 pd_price_local = self.get_price_range(symbol, date_start=query_date_start, source='local')
@@ -1382,6 +1393,7 @@ class StockPrice(StockEarning):
         upload_price(pd_price_upload_list)
         if label_global_update:
             self.upload_transaction('price')
+        return symbols_failed
 
 self = StockPrice()
 # stock_price = self

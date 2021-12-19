@@ -557,8 +557,13 @@ if 'Define Function' == 'Define Function':
             self.bool_rebalance, bool_metric_recalculate = dict_transform['bool_rebalance'], dict_transform['bool_metric_recalculate']
             self.ratio_max_hold = dict_transform['ratio_max_hold']
 
-        def set_free_n_stock(self, bool):
-            if bool:
+        def set_free_n_stock(self, _bool):
+            """
+            Whether to lift the n_stock constain
+            Args:
+                _bool (bool): boolean to lift
+            """
+            if _bool:
                 self.n_stocks += 100
             else:
                 self.n_stocks = self.n_stocks_copy
