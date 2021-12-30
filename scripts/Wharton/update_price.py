@@ -33,7 +33,7 @@ if __name__ == '__main__':
     pd_symbols = pd.read_sql("select distinct symbol from report", con_local)
     symbols = sorted(pd_symbols['symbol'])
     self = stock_price
-    self.update_price_symbol(symbols, force_reload=False, check_abnormal=False)
+    symbols_failed = self.update_price_symbol(symbols, force_reload=False, check_abnormal=False)
     print()
 
 

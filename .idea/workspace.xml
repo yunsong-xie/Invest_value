@@ -4,10 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination.">
+      <change afterPath="$PROJECT_DIR$/.idea/markdown.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/Daily_production.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/Invest_value.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Invest_value.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/Wharton/Optimize_weight_02.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Optimize_weight_02.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/update_price.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -22,6 +27,19 @@
         <option value="Setup Script" />
         <option value="Python Script" />
       </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" module-name="Invest_value" is-module-sdk="true">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myUseModuleSdk" value="true" />
+    <option name="myModuleName" value="Invest_value" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
     </option>
   </component>
   <component name="Git.Merge.Settings">
@@ -39,6 +57,12 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="ProjectErrors" />
+  </component>
   <component name="ProjectId" id="1rfTeeerRXzFLhvB6pQWnlVdIcY" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -48,11 +72,17 @@
     <option name="sortByType" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="DatabaseDriversLRU" value="sqlite" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/scripts/wharton" />
-    <property name="settings.editor.selected.configurable" value="preferences.sourceCode" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="settings.editor.selected.configurable" value="project.propVCSSupport.Mappings" />
   </component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
@@ -80,7 +110,7 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.get_price_info">
-    <configuration name="Analyze_Wharton_13" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="Daily_production" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -88,13 +118,14 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_13.py" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/Daily_production.py" />
       <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -113,9 +144,32 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Optimize_weight_02.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -131,6 +185,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib/get_price_info.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -144,11 +199,15 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/update_price.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -162,11 +221,15 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/upload_report.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -176,13 +239,20 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.Daily_production" />
+      <item itemvalue="Python.get_price_info" />
+      <item itemvalue="Python.Optimize_weight_02" />
+      <item itemvalue="Python.update_price" />
+      <item itemvalue="Python.upload_report" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.get_price_info" />
-        <item itemvalue="Python.update_price" />
+        <item itemvalue="Python.Daily_production" />
         <item itemvalue="Python.upload_report" />
+        <item itemvalue="Python.update_price" />
         <item itemvalue="Python.Optimize_weight_02" />
-        <item itemvalue="Python.Analyze_Wharton_13" />
       </list>
     </recent_temporary>
   </component>
@@ -197,13 +267,16 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1619366240886</updated>
-    </task>
-    <task id="LOCAL-00005" summary="2st revision">
-      <created>1624595465153</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1624595465153</updated>
+      <workItem from="1639930467095" duration="1891000" />
+      <workItem from="1639949163322" duration="1618000" />
+      <workItem from="1639953708443" duration="262000" />
+      <workItem from="1639954094540" duration="657000" />
+      <workItem from="1640397086780" duration="3942000" />
+      <workItem from="1640489247533" duration="1261000" />
+      <workItem from="1640490524322" duration="14000" />
+      <workItem from="1640570868160" duration="1847000" />
+      <workItem from="1640649961108" duration="2238000" />
+      <workItem from="1640829552047" duration="5326000" />
     </task>
     <task id="LOCAL-00006" summary="3rd version">
       <created>1624739668658</created>
@@ -541,8 +614,18 @@
       <option name="project" value="LOCAL" />
       <updated>1639632065591</updated>
     </task>
-    <option name="localTasksCounter" value="54" />
+    <task id="LOCAL-00054" summary="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination.">
+      <created>1639892016015</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1639892016015</updated>
+    </task>
+    <option name="localTasksCounter" value="55" />
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -554,10 +637,8 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="New upload" />
     <MESSAGE value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
     <MESSAGE value="Get ride of the unused functions in get_price_info.py" />
     <MESSAGE value="Add update log table for each table uploading." />
@@ -582,6 +663,10 @@
     <MESSAGE value="Complete MRG decision making algorithm" />
     <MESSAGE value="Finallize V13. Add Optimize_weight_01.py and Optimize_weight_02.py to start to study improve gain by optimizing the weight." />
     <MESSAGE value="Mainly changed Optimize_weight_02.py to add the docstring to describe each main function." />
-    <option name="LAST_COMMIT_MESSAGE" value="Mainly changed Optimize_weight_02.py to add the docstring to describe each main function." />
+    <MESSAGE value="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination." />
+    <option name="LAST_COMMIT_MESSAGE" value="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination." />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Invest_value$Daily_production.coverage" NAME="Daily_production Coverage Results" MODIFIED="1640490296561" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
   </component>
 </project>

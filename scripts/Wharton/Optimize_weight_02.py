@@ -1427,7 +1427,54 @@ if 'a' == 'b':
     growth_rate = round((10 ** (np.log10(value_final_mrg / 10000) / n_years) - 1) * 100, 2)
     print(f"MRG overall growth rate: {growth_rate}% - value total {value_final_mrg}")
 
-if 'plot distribution' == 'a':
+if 'plot gain historical' == 'a':
+    dict_filename = f'result/dict_save_data_07.pkl'
+
+    with open(dict_filename, 'rb') as handle:
+        dict_data = pickle.load(handle)
+
+    pd_holding_record_final = dict_data['pd_holding_record_final']
+    pd_fr_record_final = dict_data['pd_fr_record_final']
+    dict_transform = dict_data['dict_transform_hyper']
+    eval_metric = dict_transform['eval_metric']
+
+    fig, ax = plt.subplots(1, 4, figsize=(18, 5))
+    ax = fig.axes
+    pd_gain = pd_fr_record_final.loc[~pd_fr_record_final.c_return.isna()].copy()
+    pd_gain['span'] = (pd.to_datetime(pd_gain['rdq_operate']) - pd.to_datetime(pd_gain['rdq_0_1st'])).dt.days / 365
+    pd_gain['gain'] = pd_gain['c_return'] / pd_gain['cost'] - 1
+    pd_gain['gain_rate'] = 10 ** np.log10(pd_gain['gain'] + 1) / pd_gain['span'] - 1
+    pd_gain = pd_gain.loc[pd_gain['span'] > 0.2]
+
+    y_label_plot = 'gain'
+
+    ax[0].plot(pd_gain[eval_metric], pd_gain[y_label_plot], '.')
+    ax[0].set_xlabel(eval_metric)
+    ax[0].set_ylabel(y_label_plot)
+
+    ax[1].plot(pd_gain['eval_metric_quantile'], pd_gain[y_label_plot], '.')
+    ax[1].set_xlabel('eval_metric_quantile')
+    ax[1].set_ylabel(y_label_plot)
+
+    _ind = pd_holding_record_final.symbol == 'free_cash'
+    pd_value_cash = pd_holding_record_final.loc[_ind].groupby('decision_time_end').value.sum().rename('cash').reset_index()
+    pd_value_stock = pd_holding_record_final.loc[~_ind].groupby('decision_time_end').value.sum().rename('stock').reset_index()
+    pd_value_merge = pd_value_cash.merge(pd_value_stock, on='decision_time_end', how='inner')
+    pd_value_merge['total'] = pd_value_merge.cash + pd_value_merge.stock
+    pd_value_merge['change'] = pd_value_merge.total.diff() / pd_value_merge['total']
+    pd_value_merge['stock_ratio'] = pd_value_merge['stock'] / pd_value_merge['total']
+    pd_value_merge.decision_time_end = pd.to_datetime(pd_value_merge.decision_time_end)
+
+    ax[2].plot(pd_value_merge.stock_ratio, pd_value_merge.change, '.')
+    ax[2].set_xlabel('stock_ratio')
+    ax[2].set_ylabel('Quarter gain')
+
+    ax[3].plot(pd_value_merge.decision_time_end, pd_value_merge.change, '.')
+    ax[3].set_xlabel('decision_time_end')
+    ax[3].set_ylabel('Quarter gain')
+    fig.tight_layout()
+
+if 'plot gain hist distribution' == 'a':
     n_shift = 7
     files = [i for i in glob.glob('result/dict_save_data_*.pkl') if 'modified' not in i]
     versions = [int(i[-6:-4]) for i in files]

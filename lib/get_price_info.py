@@ -191,6 +191,48 @@ def parse_stock_file(dict_exchange, marketcap_filter):
     return pd_exchange_all
 
 
+def upload_data(con, tablename, pd_data, batch_size):
+    """
+    This function is able to upload both listing and fundamental tables
+    Args:
+        con (sqlite3.Connection): connection handle to database
+        tablename (str): tablename, can either be listing or fundamental
+        pd_data (pandas.dataframe): input data
+        batch_size (int): batch size to upload to sql database
+    """
+    pd_data_1 = pd_data.copy()
+    dict_keys = dict(pd_data_1.dtypes)
+    for key in dict_keys:
+        if str(dict(pd_data_1.dtypes)[key]) == 'object':
+            pd_data_1[key] = pd_data_1[key].fillna('NULL')
+            pd_data_1[key] = '"' + pd_data_1[key] + '"'
+        else:
+            pd_data_1[key] = pd_data_1[key].astype(str)
+
+    data = pd_data_1.values
+    command_ori = f"""insert into {tablename} ("{'", "'.join(dict_keys)}") values """
+    command = command_ori
+    count = 0
+    time_start = time.time()
+    for i, entry in enumerate(data):
+        command += f"""({', '.join(entry)}), \n"""
+        count += 1
+        if count >= batch_size:
+            if '\n' in command:
+                command = command[:-3]
+                con.execute(command)
+                con.commit()
+                command = command_ori
+                count = 0
+                time_span = round(time.time() - time_start, 1)
+                print(f'\rUploading {tablename} - {time_span} s - progress {i + 1}/{len(data)}', end='')
+    if '\n' in command:
+        command = command[:-3]
+        con.execute(command)
+        con.commit()
+        time_span = round(time.time() - time_start, 1)
+        print(f'\rUploading {tablename} - {time_span} s - progress {len(data)}/{len(data)}', end='')
+
 class StockEarning:
     """
     Includes functions to pull earning dates and info
@@ -200,6 +242,9 @@ class StockEarning:
         self.path_sec = f"{os.path.dirname(DIR)}/static/Financial_reports/SEC"
         self.path_yf_earning = f'{os.path.dirname(DIR)}/static/Financial_reports/Earning_dates.pkl'
         self.path_yf_financial = f'{os.path.dirname(DIR)}/static/Financial_reports/YF_FR'
+        self.con = misc.get_sql_con()
+        self._verify_earn_table()
+        self.batch_size = 1000
 
     def get_yf_earning_dates(self, symbols):
         """
@@ -295,12 +340,13 @@ class StockEarning:
     def get_earning_dates(self, symbols):
         return self.get_yf_earning_dates(symbols)
 
-    def get_yf_earning_calendar(self, date_start=date(-30), date_end=date(0)):
+    def get_yf_earning_calendar(self, date_start=date(-30), date_end=date(0), mode='sql'):
         """
         Get the yahoo finance earning date from the earning calendar pages, return a pandas dataframe
         Args:
             date_start (str): starting date of the yf_earning calendar, i.e. 2021-05-01
             date_end (str): end date of the yf_earning calendar, i.e. 2021-05-01
+            mode (str): data storage mode and method, either be "sql" or "csv",
 
         Returns:
             (pandas.dataframe): columns are
@@ -326,28 +372,42 @@ class StockEarning:
                 matched = re.findall('title="">(.+)</a>', str(calendar_entry.find('a')))
                 if len(matched) > 0:
                     symbols_calendar += matched
-            pd_calendar_output = pd.DataFrame({'symbol': symbols_calendar, 'date': [date_current] * len(symbols_calendar)})
+            pd_calendar_output = pd.DataFrame({'symbol': symbols_calendar, 'earn_date': [date_current] * len(symbols_calendar)})
             return pd_calendar_output
 
         date_start_input, date_end_input = date_start, date_end
         path_calendar = f'{os.path.dirname(DIR)}/static/Financial_reports/Calendar/yf_calendar.csv'
-        if os.path.isfile(path_calendar):
-            pd_calendar_ori = pd.read_csv(path_calendar, sep='\t')
-            if date_start <= pd_calendar_ori.date.max():
-                date_start = str(pd.to_datetime(pd_calendar_ori.date.max()) + pd.to_timedelta(f'1 day'))[:10]
-
-            if date_end <= pd_calendar_ori.date.min():
-                date_end = str(pd.to_datetime(pd_calendar_ori.date.min()) - pd.to_timedelta(f'1 day'))[:10]
+        if mode.lower() == 'csv':
+            if os.path.isfile(path_calendar):
+                pd_calendar_ori = pd.read_csv(path_calendar, sep='\t').rename(columns={'date': 'earn_date'})
+                if 'update_date' not in list(pd_calendar_ori.keys()):
+                    pd_calendar_ori['update_date'] = '2021-12-25'
+            else:
+                pd_calendar_ori = pd.DataFrame()
+        elif mode.lower() == 'sql':
+            query = f"""select * from calendar_earning 
+            where earn_date >= "{date_start}"
+            and earn_date <= "{date_end}" """
+            pd_calendar_ori = pd.read_sql(query, self.con)
         else:
-            pd_calendar_ori = pd.DataFrame()
+            raise ValueError(f"Input mode is {mode}, it can only be in ['sql', 'csv']")
 
+        if len(pd_calendar_ori) > 0:
+            if date_start <= pd_calendar_ori.earn_date.min():
+                date_start = str(pd.to_datetime(pd_calendar_ori.earn_date.max()) + pd.to_timedelta(f'1 day'))[:10]
+            if date_end <= pd_calendar_ori.earn_date.min():
+                date_end = str(pd.to_datetime(pd_calendar_ori.earn_date.min()) - pd.to_timedelta(f'1 day'))[:10]
+
+        pd_calendar_ori['datatype'] = 'ori'
         _date_start, _date_end = pd.to_datetime(date_start), pd.to_datetime(date_end)
         num_day = max((_date_end - _date_start).days, 0)
-        calendar_days = [_date_start + pd.to_timedelta(f'{i} day') for i in range(num_day)]
+        calendar_days = [str(_date_start + pd.to_timedelta(f'{i} day'))[:10] for i in range(num_day)]
+        calendar_days = [i for i in calendar_days if (i < pd_calendar_ori.earn_date.min()) & (i > pd_calendar_ori.earn_date.max())]
         pd_calendar_list = [pd_calendar_ori]
         time_start = time.time()
         for i_calendar, calendar_day in zip(range(len(calendar_days)), calendar_days):
-            search_day_start, search_day_end = str(calendar_day - pd.to_timedelta(f'6 day'))[:10], str(calendar_day)[:10]
+            _calendar_day = pd.to_datetime(calendar_day)
+            search_day_start, search_day_end = str(_calendar_day - pd.to_timedelta(f'6 day'))[:10], str(_calendar_day)[:10]
             _url = f'https://finance.yahoo.com/calendar/earnings?' \
                    f'from={search_day_start}&to={search_day_end}&day={search_day_end}&size=100'
             soup = make_soup(_url)
@@ -369,12 +429,41 @@ class StockEarning:
             time_span = round(time.time() - time_start)
             print(f'\rTime: {time_span} s - Complete parsing yahoo-finance Calendar {i_calendar + 1} / {len(calendar_days)}', end='')
 
-        pd_calendar = pd.concat(pd_calendar_list)
+        pd_calendar = pd.concat(pd_calendar_list).drop_duplicates()
+        if 'update_date' in list(pd_calendar.keys()):
+            pd_calendar['update_date'] = pd_calendar['update_date'].fillna(date(0))
+        else:
+            pd_calendar['update_date'] = date(0)
+        if 'datatype' in list(pd_calendar.keys()):
+            pd_calendar['datatype'] = pd_calendar['datatype'].fillna('new')
+        else:
+            pd_calendar['datatype'] = 'new'
         if len(pd_calendar_list) > 1:
-            pd_calendar.to_csv(path_calendar, index=False, sep='\t')
-        pd_calendar_select = pd_calendar.loc[(pd_calendar.date >= date_start_input) &
-                                             (pd_calendar.date <= date_end_input)]
+            if mode == 'csv':
+                pd_calendar.to_csv(path_calendar, index=False, sep='\t')
+            else:
+                pd_calendar_new = pd_calendar.loc[pd_calendar.datatype == 'new'][['symbol', 'earn_date', 'update_date']]
+                upload_data(self.con, 'calendar_earning', pd_calendar_new, self.batch_size)
+        pd_calendar_select = pd_calendar.loc[(pd_calendar.earn_date >= date_start_input) &
+                                             (pd_calendar.earn_date <= date_end_input)]
         return pd_calendar_select
+
+    def _verify_earn_table(self):
+        try:
+            query = "select * from calendar_earning limit 10"
+            _pd_temp = pd.read_sql(query, self.con)
+        except:
+            query = """create table "calendar_earning" (
+                            "symbol" TEXT, 
+                            "earn_date" TEXT, 
+                            "update_date" TEXT
+                        ) """
+            self.con.execute(query)
+
+            query = """CREATE INDEX "index_calendar_earning" ON "calendar_earning" ("earn_date")"""
+            self.con.execute(query)
+
+            self.con.commit()
 
     def get_cik_data(self, force_reload=False):
         """
@@ -763,7 +852,6 @@ class StockPrice(StockEarning):
         self.dict_pd_price = {}
         self.pd_cik = None
 
-
     def _get_fundamentals(self, pd_listing, source='robinhood'):
         """
         Obtain stock fundamental data columns include:
@@ -873,55 +961,17 @@ class StockPrice(StockEarning):
         self.con.execute("""delete from fundamental""")
         self.con.commit()
 
-        batch_size = 1000
+        _batch_size = 1000
 
-        def upload_data(tablename, pd_data):
-            """
-            This function is able to upload both listing and fundamental tables
-            Args:
-                tablename (str): tablename, can either be listing or fundamental
-                pd_data (pandas.dataframe):
-            """
-            pd_data_1 = pd_data.rename(columns={'tic': 'symbol'}).copy()
-            dict_keys = dict(pd_data_1.dtypes)
-            for key in dict_keys:
-                if str(dict(pd_data_1.dtypes)[key]) == 'object':
-                    pd_data_1[key] = pd_data_1[key].fillna('NULL')
-                    pd_data_1[key] = '"' + pd_data_1[key] + '"'
-                else:
-                    pd_data_1[key] = pd_data_1[key].astype(str)
-
-            data = pd_data_1.values
-            command_ori = f"""insert into {tablename} ("{'", "'.join(dict_keys)}") values """
-            command = command_ori
-            count = 0
-            time_start = time.time()
-            for i, entry in enumerate(data):
-                command += f"""({', '.join(entry)}), \n"""
-                count += 1
-                if count >= batch_size:
-                    if '\n' in command:
-                        command = command[:-3]
-                        self.con.execute(command)
-                        self.con.commit()
-                        command = command_ori
-                        count = 0
-                        time_span = round(time.time() - time_start, 1)
-                        print(f'\rUploading {tablename} - {time_span} s - progress {i + 1}/{len(data)}', end='')
-            if '\n' in command:
-                command = command[:-3]
-                self.con.execute(command)
-                self.con.commit()
-                time_span = round(time.time() - time_start, 1)
-                print(f'\rUploading {tablename} - {time_span} s - progress {len(data)}/{len(data)}', end='')
 
         keys_listing = ['symbol', 'name', 'exchange', 'assetType', 'ipoDate']
-        upload_data('listing', pd_listing[keys_listing])
+        upload_data(self.con, 'listing', pd_listing[keys_listing], batch_size=_batch_size)
         keys_fundamental = ['symbol', 'exchange', 'country', 'market_cap', 'headquarters_city', 'headquarters_state',
                             'sector', 'industry']
         pd_fm['market_cap'] = pd_fm['market_cap'].round(4)
         print()
-        upload_data('fundamental', pd_fm[keys_fundamental])
+        pd_fm_upload = pd_fm[keys_fundamental].rename(columns={'tic': 'symbol'}).copy()
+        upload_data(self.con, 'fundamental', pd_fm_upload, batch_size=_batch_size)
 
     def upload_transaction(self, tablename, comment="NULL"):
         date_day_str = str(datetime.datetime.now())[:10]
@@ -1395,5 +1445,7 @@ class StockPrice(StockEarning):
             self.upload_transaction('price')
         return symbols_failed
 
-self = StockPrice()
+# self = StockPrice()
+self = StockEarning()
+# pd_earn = self.get_yf_earning_calendar(date_start=date(-30), date_end=date(5), mode='sql')
 # stock_price = self
