@@ -467,7 +467,7 @@ class StockEarning:
 
     def get_cik_data(self, force_reload=False):
         """
-        Obtain cik vs symbol data from sec website
+        Obtain cik vs symbol data from sec website.
         Args:
             force_reload (Boolean): whether to force to reload
 
@@ -926,7 +926,7 @@ class StockPrice(StockEarning):
             exclude_list = ['GOOG', ]
             pd_fm = pd_fm.loc[~pd_fm.symbol.isin(exclude_list)]
 
-            print('Marketcap pulling completed')
+            print('\nMarketcap pulling completed')
         else:
             raise ValueError('Source can only be IEX or robinhood.')
 
@@ -1258,6 +1258,7 @@ class StockPrice(StockEarning):
                                 symbol, rdq, adjclose_latest, marketcap_latest
         """
         if self.pd_shares is None:
+
             query = """with filter as (
                             select symbol, max(rdq) as rdq from report 
                             where cshoq is not NULL
@@ -1315,6 +1316,7 @@ class StockPrice(StockEarning):
         """
         if type(symbols) is str:
             symbols = [symbols]
+        symbols = [i.split(' ')[0] for i in symbols]
         time_now_utc = str(datetime.datetime.utcnow())
         hour = int(str(time_now_utc)[11:13]) + int(str(time_now_utc)[14:16])/60 + int(str(time_now_utc)[17:18])/3600
         us_business_day = CustomBusinessDay(calendar=USFederalHolidayCalendar())

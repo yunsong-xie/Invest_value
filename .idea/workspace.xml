@@ -4,15 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination.">
-      <change afterPath="$PROJECT_DIR$/.idea/markdown.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/Daily_production.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Invest_value.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Invest_value.iml" afterDir="false" />
+    <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Optimize_weight_02.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Optimize_weight_02.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/update_price.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -109,30 +105,8 @@
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.get_price_info">
-    <configuration name="Daily_production" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true" nameIsGenerated="true">
-      <module name="Invest_value" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/Daily_production.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="Optimize_weight_02" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.Analyze_Wharton_14_prod">
+    <configuration name="Analyze_Wharton_13" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -145,9 +119,28 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Optimize_weight_02.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_13.py" />
       <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Analyze_Wharton_14_prod" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_14_prod.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -180,6 +173,9 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/lib" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -199,9 +195,6 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -221,9 +214,6 @@
       <module name="Invest_value" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
@@ -240,19 +230,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.Daily_production" />
       <item itemvalue="Python.get_price_info" />
-      <item itemvalue="Python.Optimize_weight_02" />
       <item itemvalue="Python.update_price" />
       <item itemvalue="Python.upload_report" />
+      <item itemvalue="Python.Analyze_Wharton_13" />
+      <item itemvalue="Python.Analyze_Wharton_14_prod" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.get_price_info" />
-        <item itemvalue="Python.Daily_production" />
+        <item itemvalue="Python.Analyze_Wharton_14_prod" />
         <item itemvalue="Python.upload_report" />
         <item itemvalue="Python.update_price" />
-        <item itemvalue="Python.Optimize_weight_02" />
+        <item itemvalue="Python.Analyze_Wharton_13" />
+        <item itemvalue="Python.get_price_info" />
       </list>
     </recent_temporary>
   </component>
@@ -276,14 +266,10 @@
       <workItem from="1640490524322" duration="14000" />
       <workItem from="1640570868160" duration="1847000" />
       <workItem from="1640649961108" duration="2238000" />
-      <workItem from="1640829552047" duration="5326000" />
-    </task>
-    <task id="LOCAL-00006" summary="3rd version">
-      <created>1624739668658</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1624739668658</updated>
+      <workItem from="1640829552047" duration="5523000" />
+      <workItem from="1640885216695" duration="691000" />
+      <workItem from="1643559422057" duration="10089000" />
+      <workItem from="1645289191602" duration="11699000" />
     </task>
     <task id="LOCAL-00007" summary="4th version">
       <created>1625023782906</created>
@@ -621,7 +607,14 @@
       <option name="project" value="LOCAL" />
       <updated>1639892016015</updated>
     </task>
-    <option name="localTasksCounter" value="55" />
+    <task id="LOCAL-00055" summary="Completed use sqlite database to store and query earning date data.&#10;Changes are made in get_yf_earning_calendar function in get_price_info.py">
+      <created>1640835102142</created>
+      <option name="number" value="00055" />
+      <option name="presentableId" value="LOCAL-00055" />
+      <option name="project" value="LOCAL" />
+      <updated>1640835102143</updated>
+    </task>
+    <option name="localTasksCounter" value="56" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -639,7 +632,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Make changes to get_listing_info function on get_price_info.py. Plus other minor changes." />
     <MESSAGE value="Get ride of the unused functions in get_price_info.py" />
     <MESSAGE value="Add update log table for each table uploading." />
     <MESSAGE value="Completed Wharton analyze procedure." />
@@ -664,7 +656,8 @@
     <MESSAGE value="Finallize V13. Add Optimize_weight_01.py and Optimize_weight_02.py to start to study improve gain by optimizing the weight." />
     <MESSAGE value="Mainly changed Optimize_weight_02.py to add the docstring to describe each main function." />
     <MESSAGE value="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination." />
-    <option name="LAST_COMMIT_MESSAGE" value="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination." />
+    <MESSAGE value="Completed use sqlite database to store and query earning date data.&#10;Changes are made in get_yf_earning_calendar function in get_price_info.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Completed use sqlite database to store and query earning date data.&#10;Changes are made in get_yf_earning_calendar function in get_price_info.py" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Invest_value$Daily_production.coverage" NAME="Daily_production Coverage Results" MODIFIED="1640490296561" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
