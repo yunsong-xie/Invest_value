@@ -1,6 +1,4 @@
 __author__ = 'Yunsong Xie'
-__email__ = 'xiefinance00@gmail.com'
-__company__ = 'Xie Finance LLC'
 
 import re, os, sys, datetime, sqlite3
 import numpy as np

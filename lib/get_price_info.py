@@ -843,6 +843,7 @@ class StockPrice(StockEarning):
     def __init__(self):
         super().__init__()
         self.bool_rs_login = False
+        self.period_symbol_refresh = 'quarter'
         self.dir_static = f'{os.path.dirname(DIR)}/static'
         self.dir_price = f'{self.dir_static}/pkl_price'
         self.pd_listing, self.pd_fm = None, None
@@ -991,16 +992,27 @@ class StockPrice(StockEarning):
             pd_log = pd.read_sql("""select tablename, max(time) as time from log 
                         where tablename in ('listing', 'fundamental')
                         group by tablename""", self.con)
-            last_update_time = pd_log.time.min()
-            if last_update_time[:7] == date_month_str:
+            last_update_time = str(pd_log.time.min())
+            if self.period_symbol_refresh == 'month':
+                bool_read_local = last_update_time[:7] == date_month_str
+            elif self.period_symbol_refresh == 'quarter':
+                time_current = int(date_month_str[:4]) + int(date_month_str[5:7]) // 3
+                time_last = int(last_update_time[:4]) + int(last_update_time[5:7]) // 3
+                bool_read_local = time_current == time_last
+            elif self.period_symbol_refresh == 'year':
+                bool_read_local = last_update_time[:4] == date_month_str[:4]
+            else:
+                raise ValueError(f'Not able recognize period_symbol_refresh {self.period_symbol_refresh}')
+            if bool_read_local:
                 self.pd_listing = pd.read_sql('select * from listing', self.con)
             else:
                 self.pd_listing = pd.read_csv('https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=demo')
                 # self.pd_listing.to_csv(path_listing, index=False)
                 pd_listing_ori = self.pd_listing.copy()
                 pd_listing = self.pd_listing.loc[(self.pd_listing.exchange.isin(['NYSE', 'NASDAQ'])) &
-                                                 (self.pd_listing.assetType == 'Stock')]
-                pd_listing = pd_listing.loc[~pd_listing.symbol.str.contains('-')]
+                                                 (self.pd_listing.assetType == 'Stock')].copy()
+                pd_listing = pd_listing.loc[~pd_listing['symbol'].isna()]
+                pd_listing = pd_listing.loc[~pd_listing['symbol'].str.contains('-')]
                 pd_fm = self._get_fundamentals(pd_listing, source='robinhood')
                 pd_fm_ori = pd_fm.copy()
                 # pd_fm.to_csv(path_fundamental, index=False)
@@ -1304,7 +1316,7 @@ class StockPrice(StockEarning):
         pd_marketcap_report = pd_marketcap_report[['symbol', time_col, 'marketcap']]
         return pd_marketcap_report
 
-    def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False):
+    def update_price_symbol(self, symbols, time_hard_start='1975-01-01', force_reload=False, check_abnormal=False, n_trial=10):
         """
         Update the local pkl stored historical intraday price information of provided list of symbols
         Args:
@@ -1371,6 +1383,9 @@ class StockPrice(StockEarning):
                         self.con.commit()
 
         for i_symbol, symbol in zip(range(len(symbols)), symbols):
+
+            bool_success = False
+
             pd_listing_entry = self.pd_listing.loc[self.pd_listing.symbol == symbol]
 
             is_updated = False
@@ -1447,7 +1462,11 @@ class StockPrice(StockEarning):
             self.upload_transaction('price')
         return symbols_failed
 
-# self = StockPrice()
-self = StockEarning()
+self = StockPrice()
+if 1 == 0:
+    pd_symbols = pd.read_sql("select distinct symbol from report", con_local)
+    symbols = sorted(pd_symbols['symbol'])
+    self.update_price_symbol(symbols)
+# self = StockEarning()
 # pd_earn = self.get_yf_earning_calendar(date_start=date(-30), date_end=date(5), mode='sql')
 # stock_price = self

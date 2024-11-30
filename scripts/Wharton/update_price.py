@@ -35,5 +35,3 @@ if __name__ == '__main__':
     self = stock_price
     symbols_failed = self.update_price_symbol(symbols, force_reload=False, check_abnormal=False)
     print()
-
-

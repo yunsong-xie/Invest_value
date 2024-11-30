@@ -5,10 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_LSTM-01.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_15.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/Wharton/price_analysis_01.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/Invest_value.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Invest_value.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/image_match.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/image_match.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_10.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_10.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/update_price.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/Wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/upload_report.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -21,6 +32,9 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Setup Script" />
+        <option value="TypeScript File" />
+        <option value="JavaScript File" />
+        <option value="HTML File" />
         <option value="Python Script" />
       </list>
     </option>
@@ -45,6 +59,12 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="RESET_MODE" value="MIXED" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;yunsong-xie&quot;
+  }
+}</component>
   <component name="GitSEFilterConfiguration">
     <file-type-list>
       <filtered-out-file-type name="LOCAL_BRANCH" />
@@ -53,12 +73,21 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/yunsong-xie/Invest_value&quot;,
+    &quot;accountId&quot;: &quot;21f29bed-8d32-41a1-b3be-008d6abe85c9&quot;
+  }
+}</component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="ProjectErrors" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="1rfTeeerRXzFLhvB6pQWnlVdIcY" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -66,20 +95,32 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
     <option name="sortByType" value="true" />
+    <option name="sortKey" value="BY_TYPE" />
   </component>
-  <component name="PropertiesComponent">
-    <property name="DatabaseDriversLRU" value="sqlite" />
-    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/scripts/wharton" />
-    <property name="node.js.detected.package.eslint" value="true" />
-    <property name="node.js.detected.package.tslint" value="true" />
-    <property name="node.js.selected.package.eslint" value="(autodetect)" />
-    <property name="node.js.selected.package.tslint" value="(autodetect)" />
-    <property name="settings.editor.selected.configurable" value="project.propVCSSupport.Mappings" />
-  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.Analyze_Wharton_14_prod.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Analyze_Wharton_15.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Python Console.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_latest_grade_5_02.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_price_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.image_match.executor&quot;: &quot;Run&quot;,
+    &quot;Python.price_analysis_01.executor&quot;: &quot;Run&quot;,
+    &quot;Python.update_price.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/PycharmProjects/Investment/Invest_value&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings module-name="Invest_value" is-module-sdk="true">
@@ -98,16 +139,17 @@
       <recent name="D:\PycharmProjects\Invest_value\capitalIQ" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\PycharmProjects\Investment\Invest_value\Seaking_Alpha\data_input" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton\cache_data" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton\result" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\static\csv\stock_list" />
       <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\obsolete" />
-      <recent name="D:\PycharmProjects\Investment\Invest_value\scripts\wharton" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.Analyze_Wharton_14_prod">
-    <configuration name="Analyze_Wharton_13" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.get_latest_grade_5_02">
+    <configuration name="Analyze_Wharton_15" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -119,7 +161,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_13.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_15.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -128,17 +170,18 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="Analyze_Wharton_14_prod" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="Python Console" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/Analyze_Wharton_14_prod.py" />
+      <option name="SCRIPT_NAME" value="/Python Console.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -149,6 +192,7 @@
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -169,8 +213,29 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="get_price_info" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="get_latest_grade_5_02" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Seeking_Alpha" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Seeking_Alpha/get_latest_grade_5_02.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="image_match" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -182,47 +247,32 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib/get_price_info.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib/image_match.py" />
       <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="update_price" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="price_analysis_01" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Invest_value" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/update_price.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/price_analysis_01.py" />
       <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="upload_report" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Invest_value" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts/wharton" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/wharton/upload_report.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -230,21 +280,28 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.get_price_info" />
-      <item itemvalue="Python.update_price" />
-      <item itemvalue="Python.upload_report" />
-      <item itemvalue="Python.Analyze_Wharton_13" />
-      <item itemvalue="Python.Analyze_Wharton_14_prod" />
+      <item itemvalue="Python.Python Console" />
+      <item itemvalue="Python.image_match" />
+      <item itemvalue="Python.get_latest_grade_5_02" />
+      <item itemvalue="Python.Analyze_Wharton_15" />
+      <item itemvalue="Python.price_analysis_01" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.Analyze_Wharton_14_prod" />
-        <item itemvalue="Python.upload_report" />
-        <item itemvalue="Python.update_price" />
-        <item itemvalue="Python.Analyze_Wharton_13" />
-        <item itemvalue="Python.get_price_info" />
+        <item itemvalue="Python.get_latest_grade_5_02" />
+        <item itemvalue="Python.Python Console" />
+        <item itemvalue="Python.Python Console" />
+        <item itemvalue="Python.image_match" />
+        <item itemvalue="Python.get_latest_grade_5_02" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-fb887030ada0-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.21565.199" />
+      </set>
+    </attachedChunks>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
@@ -269,14 +326,66 @@
       <workItem from="1640829552047" duration="5523000" />
       <workItem from="1640885216695" duration="691000" />
       <workItem from="1643559422057" duration="10089000" />
-      <workItem from="1645289191602" duration="11699000" />
-    </task>
-    <task id="LOCAL-00007" summary="4th version">
-      <created>1625023782906</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1625023782906</updated>
+      <workItem from="1645289191602" duration="12829000" />
+      <workItem from="1646497648044" duration="2803000" />
+      <workItem from="1647827299224" duration="621000" />
+      <workItem from="1649535539777" duration="2558000" />
+      <workItem from="1650173470733" duration="3000" />
+      <workItem from="1651347385247" duration="1453000" />
+      <workItem from="1652300591692" duration="3580000" />
+      <workItem from="1652637090693" duration="2624000" />
+      <workItem from="1653964222073" duration="3527000" />
+      <workItem from="1654352360145" duration="5345000" />
+      <workItem from="1654904609545" duration="2319000" />
+      <workItem from="1655603179309" duration="950000" />
+      <workItem from="1656208989709" duration="2771000" />
+      <workItem from="1656773740699" duration="601000" />
+      <workItem from="1656949688901" duration="3106000" />
+      <workItem from="1658004672803" duration="7279000" />
+      <workItem from="1658027610797" duration="603000" />
+      <workItem from="1659843820382" duration="2691000" />
+      <workItem from="1660443785614" duration="2250000" />
+      <workItem from="1661117563890" duration="1213000" />
+      <workItem from="1661628428780" duration="4625000" />
+      <workItem from="1664676055075" duration="1378000" />
+      <workItem from="1665267824529" duration="1453000" />
+      <workItem from="1665885336235" duration="1850000" />
+      <workItem from="1667056057072" duration="614000" />
+      <workItem from="1667615135305" duration="1553000" />
+      <workItem from="1668219037362" duration="1273000" />
+      <workItem from="1669437216220" duration="1173000" />
+      <workItem from="1670685632319" duration="1000" />
+      <workItem from="1670685743708" duration="1246000" />
+      <workItem from="1673709623526" duration="1262000" />
+      <workItem from="1674785938737" duration="1114000" />
+      <workItem from="1675610457868" duration="16595000" />
+      <workItem from="1677263698333" duration="3350000" />
+      <workItem from="1677373718540" duration="1129000" />
+      <workItem from="1678579888553" duration="1817000" />
+      <workItem from="1679151244790" duration="1209000" />
+      <workItem from="1679701668604" duration="1220000" />
+      <workItem from="1680321359564" duration="4294000" />
+      <workItem from="1681653944713" duration="1240000" />
+      <workItem from="1682603762057" duration="1815000" />
+      <workItem from="1682908917441" duration="1580000" />
+      <workItem from="1684169877090" duration="1810000" />
+      <workItem from="1685300213375" duration="603000" />
+      <workItem from="1692646173858" duration="2886000" />
+      <workItem from="1693621696163" duration="2795000" />
+      <workItem from="1696032455610" duration="1221000" />
+      <workItem from="1697247438648" duration="1813000" />
+      <workItem from="1700277778053" duration="1652000" />
+      <workItem from="1702179005651" duration="1926000" />
+      <workItem from="1702231423569" duration="3280000" />
+      <workItem from="1702442362144" duration="8236000" />
+      <workItem from="1702501927341" duration="623000" />
+      <workItem from="1702517094312" duration="1703000" />
+      <workItem from="1702519690603" duration="2538000" />
+      <workItem from="1722581109498" duration="6417000" />
+      <workItem from="1722606323817" duration="439000" />
+      <workItem from="1732475853628" duration="1199000" />
+      <workItem from="1732584272080" duration="630000" />
+      <workItem from="1732627765345" duration="567000" />
     </task>
     <task id="LOCAL-00008" summary="2021-07-11">
       <created>1626057454810</created>
@@ -614,7 +723,14 @@
       <option name="project" value="LOCAL" />
       <updated>1640835102143</updated>
     </task>
-    <option name="localTasksCounter" value="56" />
+    <task id="LOCAL-00056" summary="Fix minor stocks selection critiera to improve strategy reproductivity.">
+      <created>1645314129963</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1645314129964</updated>
+    </task>
+    <option name="localTasksCounter" value="57" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -632,7 +748,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Get ride of the unused functions in get_price_info.py" />
     <MESSAGE value="Add update log table for each table uploading." />
     <MESSAGE value="Completed Wharton analyze procedure." />
     <MESSAGE value="Completed Wharton analyze procedure V2" />
@@ -657,7 +772,8 @@
     <MESSAGE value="Mainly changed Optimize_weight_02.py to add the docstring to describe each main function." />
     <MESSAGE value="Modifed update_price_symbol function in  get_price_info.py. Avoid network caused program termination." />
     <MESSAGE value="Completed use sqlite database to store and query earning date data.&#10;Changes are made in get_yf_earning_calendar function in get_price_info.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="Completed use sqlite database to store and query earning date data.&#10;Changes are made in get_yf_earning_calendar function in get_price_info.py" />
+    <MESSAGE value="Fix minor stocks selection critiera to improve strategy reproductivity." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix minor stocks selection critiera to improve strategy reproductivity." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Invest_value$Daily_production.coverage" NAME="Daily_production Coverage Results" MODIFIED="1640490296561" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />

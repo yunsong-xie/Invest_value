@@ -1,8 +1,21 @@
+# Byte-compile / optimized / DLL files
+.idea/
+__pycache__/
+*.py[cod]
+.vscode
+.databricks
+
+
+
+**/~*.*
 **/*.csv
 **/*.pkl
 **/*.pptx
 **/*.exe
 **/*.zip
-**/.ipynb_checkpoints/*
+**/.ipynb_checkpoints
 **/*.db
 !static/csv/stock_list/*.csv
+!Seeking_Alpha/data_input/*.csv
+**/*.xls
+**/*.png

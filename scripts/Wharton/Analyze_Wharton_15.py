@@ -10,8 +10,8 @@ from sklearn.linear_model import LinearRegression
 import xgboost
 import multiprocessing as mp
 
-pd.set_option('display.max_column', 75)
-pd.set_option('display.max_colwidth', 2400)
+pd.set_option('display.max_column', None)
+pd.set_option('display.max_colwidth', 500)
 pd.set_option('display.width', 25000)
 
 DIR = common_func.misc.get_main_dir()
@@ -152,6 +152,8 @@ def get_data_from_db():
     col_query_avg_2 = 'max(ty2.rdq) as rdq_2, ' + ', '.join([f'avg(ty2.{i}) as {i}_2' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q0 = 'max(tq.rdq) as rdq_q0, ' + ', '.join([f'avg(tq.{i}) as {i}_q0' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q1 = 'max(tq.rdq) as rdq_q1, ' + ', '.join([f'avg(tq.{i}) as {i}_q1' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_q2 = 'max(tq.rdq) as rdq_q2, ' + ', '.join([f'avg(tq.{i}) as {i}_q2' for i in col_output_list_avg if i != 'rdq'])
+    col_query_avg_q3 = 'max(tq.rdq) as rdq_q3, ' + ', '.join([f'avg(tq.{i}) as {i}_q3' for i in col_output_list_avg if i != 'rdq'])
     col_query_avg_q4 = 'max(tq.rdq) as rdq_q4, ' + ', '.join([f'avg(tq.{i}) as {i}_q4' for i in col_output_list_avg if i != 'rdq'])
 
     merge_query_x, merge_query_x_filter = '', ''
@@ -160,7 +162,7 @@ def get_data_from_db():
         for key_item in col_output_list_avg:
             merge_query_x_filter += f', ty{key_time}.{key_item}_{key_time}'
             merge_query_x += f', ty{key_time}.{key_item}_{key_time}'
-    quarter_list = ['q0', 'q1', 'q4']
+    quarter_list = ['q0', 'q1', 'q2', 'q3', 'q4']
     for key_time in quarter_list:
         for key_item in col_output_list_avg:
             merge_query_x += f', t{key_time}.{key_item}_{key_time}'
@@ -293,6 +295,18 @@ def get_data_from_db():
         where tf.symbol = tq.symbol and tf.rank - tq.rank = 1 
         group by tf.symbol, tf.rdq, tf.datafqtr
     ),
+    dataq2 as (
+        select tf.rank, tf.symbol, tf.datafqtr, tf.rdq, {col_query_avg_q2}
+        from rdq_0_filter tf, filter2 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = 2
+        group by tf.symbol, tf.rdq, tf.datafqtr
+    ),
+    dataq3 as (
+        select tf.rank, tf.symbol, tf.datafqtr, tf.rdq, {col_query_avg_q3}
+        from rdq_0_filter tf, filter2 tq
+        where tf.symbol = tq.symbol and tf.rank - tq.rank = 3 
+        group by tf.symbol, tf.rdq, tf.datafqtr
+    ),
     dataq4 as (
         select tf.rank, tf.symbol, tf.datafqtr, tf.rdq, {col_query_avg_q4}
         from rdq_0_filter tf, filter2 tq
@@ -326,11 +340,14 @@ def get_data_from_db():
     data_merge_x as (
         select ty0.rank, ty0.symbol, ty0.datafqtr, ty0.rdq {merge_query_x}
         from data0 ty0 inner join data1 ty1 inner join data2 ty2
-        inner join dataq0 tq0 inner join dataq1 tq1 inner join dataq4 tq4 
+        inner join dataq0 tq0 inner join dataq1 tq1 inner join dataq4 tq4
+        inner join dataq2 tq2 inner join dataq3 tq3 
         on ty0.symbol = ty1.symbol and ty0.rdq = ty1.rdq and ty0.datafqtr = ty1.datafqtr
         and ty0.symbol = ty2.symbol and ty0.rdq = ty2.rdq and ty0.datafqtr = ty2.datafqtr
         and ty0.symbol = tq0.symbol and ty0.rdq = tq0.rdq and ty0.datafqtr = tq0.datafqtr
         and ty0.symbol = tq1.symbol and ty0.rdq = tq1.rdq and ty0.datafqtr = tq1.datafqtr
+        and ty0.symbol = tq2.symbol and ty0.rdq = tq2.rdq and ty0.datafqtr = tq2.datafqtr
+        and ty0.symbol = tq3.symbol and ty0.rdq = tq3.rdq and ty0.datafqtr = tq3.datafqtr
         and ty0.symbol = tq4.symbol and ty0.rdq = tq4.rdq and ty0.datafqtr = tq4.datafqtr
     ), 
     data_merge_xy_1 as (
@@ -402,7 +419,8 @@ def get_data_from_db():
     print('Completed data aggregation')
     return pd_data_ori
 
-if __name__  ==  '__main__':
+
+if __name__  ==  '__main__0':
     try:
         a = pd_data_ori.iloc[0]
     except:

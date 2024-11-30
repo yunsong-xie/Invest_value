@@ -79,7 +79,7 @@ def read_report_data(path_csv, path_columns):
     pd_wharton_fr = pd_wharton[columns_in]
     pd_wharton_fr = pd_wharton_fr.astype(dict_types)
     for key in set_types_date:
-        pd_wharton_fr[key] = pd_wharton_fr[key].str[:8]
+        pd_wharton_fr[key] = pd_wharton_fr[key].str.replace('-', '').str[:8]
 
     columns_exclude_keywords = list(pd_exclude_keywords.keyword)
     cols_select = list(dict_columns)

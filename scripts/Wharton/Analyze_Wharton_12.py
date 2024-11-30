@@ -1428,10 +1428,10 @@ if __name__ == '__main__':
     n_estimators_range, max_depth_range, subsample_range = [75, 75], [5, 5], [0.85, 0.85]
     min_samples_split, min_samples_leaf = 2, 1
     training_num_p_min = 0.75
-    _decision_time_start, _decision_time_end = '1999-01-01', '2021-12-31'
+    _decision_time_start, _decision_time_end = '2000-01-01', '2023-03-31'
     bool_pseudo = True
-    n_trials = 15
-    n_regr = 1
+    n_trials = 1
+    n_regr = 15
     aug_size_train, aug_sigma_train = 20, 0.1
     aug_size_pseudo, aug_sigma_pseudo = 3, 0.1
 
