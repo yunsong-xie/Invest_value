@@ -1,10 +1,15 @@
 # Byte-compile / optimized / DLL files
+.git/
+local/
+.idea/**/*.*
+.idea/*.*
 .idea/
 __pycache__/
 *.py[cod]
 .vscode
 .databricks
 
+cache/
 
 
 **/~*.*
@@ -15,7 +20,9 @@ __pycache__/
 **/*.zip
 **/.ipynb_checkpoints
 **/*.db
-!static/csv/stock_list/*.csv
-!Seeking_Alpha/data_input/*.csv
 **/*.xls
 **/*.png
+
+!static/csv/stock_list/*.csv
+!Seeking_Alpha/data_input/*.csv
+!Seeking_Alpha/Images/*.png
