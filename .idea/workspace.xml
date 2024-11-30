@@ -5,21 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="dbe21a06-56db-45fa-b948-675787e8c806" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_LSTM-01.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_15.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/Wharton/price_analysis_01.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Invest_value.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Invest_value.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/get_price_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/get_price_info.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/image_match.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/image_match.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_10.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_10.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_12.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_13.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/Analyze_Wharton_14_prod.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/update_price.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/update_price.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/Wharton/upload_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/Wharton/upload_report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/Five Straight Not Covered.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/New Tab.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/Rating History 3Y button-Clicked.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/Rating History 3Y button.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/Rating History Loading.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/Seeking Alpha Logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/Images/url_box.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Seeking_Alpha/get_latest_grade_5_02.py" beforeDir="false" afterPath="$PROJECT_DIR$/Seeking_Alpha/get_latest_grade_5_02.py" afterDir="false" />
     </list>
     <list id="296a5c3b-7cd7-4fc4-a53b-fded9f110fea" name="Revert &quot;2021-07-11&quot;" comment="Revert &quot;2021-07-11&quot;&#10;&#10;This reverts commit d8fd5fbe" />
     <list id="e877d7a3-1fad-4a30-88e1-ef98944014c5" name="Revert &quot;4th version&quot;" comment="Revert &quot;4th version&quot;&#10;&#10;This reverts commit d1c23721" />
@@ -175,6 +170,9 @@
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />

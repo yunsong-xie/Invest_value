@@ -11,6 +11,8 @@ pd.set_option("display.max_colwidth", 200)
 pd.set_option("display.width", 5000)
 
 DIR = os.path.dirname(os.path.realpath(__file__))
+username = os.getlogin()
+DIR_IMAGE = f'{DIR}/Images/{username}'
 DIR_LIB = DIR.split('Invest_value')[0] + '/Invest_value/lib'
 if DIR_LIB not in sys.path:
     sys.path.append(DIR_LIB)
@@ -31,7 +33,7 @@ class SAParsing:
 
     @staticmethod
     def goto_url(url, post_time_sleep=2):
-        list_loc = cv_find_all_pic(f'{DIR}/Images/url_box.png')
+        list_loc = cv_find_all_pic(f'{DIR_IMAGE}/url_box.png')
         pygui.moveTo(list_loc[0][0] + 350, list_loc[0][1] + 12)
         pygui.position()
         pygui.click()
@@ -42,7 +44,7 @@ class SAParsing:
 
     @staticmethod
     def activate_chrome():
-        list_loc = cv_find_all_pic(f'{DIR}/Images/url_box.png')
+        list_loc = cv_find_all_pic(f'{DIR_IMAGE}/url_box.png')
         pygui.moveTo(list_loc[0][0] + 350, list_loc[0][1] + 12)
         pygui.position()
         pygui.click()
@@ -53,7 +55,7 @@ class SAParsing:
             time_out, scan_period = 10, 0.5
         n_char_min = 100
         pyperclip.copy('')
-        list_loc = cv_find_all_pic(f'{DIR}/Images/Seeking Alpha Logo.png', region=(0, 0, 300, 300))
+        list_loc = cv_find_all_pic(f'{DIR_IMAGE}/Seeking Alpha Logo.png', region=(0, 0, 300, 300))
         self.loc_default = (list_loc[0][0] + 100, list_loc[0][1] + 60)
         pygui.moveTo(self.loc_default[0], self.loc_default[1])
         pygui.click()
@@ -124,7 +126,7 @@ class SAParsing:
             width, height = 300, 350
             region = (250, int(pygui.size().height) - 100 - height, width, height)
 
-        list_loc = cv_find_all_pic(f'{DIR}/Images/Seeking Alpha Logo.png', region=(0, 0, 300, 300))
+        list_loc = cv_find_all_pic(f'{DIR_IMAGE}/Seeking Alpha Logo.png', region=(0, 0, 300, 300))
         pygui.moveTo(list_loc[0][0] + 100, list_loc[0][1] + 60)
         pygui.click()
 
@@ -159,8 +161,8 @@ class SAParsing:
         time_start = time.time()
         time_span = 0
         bool_complete = False
-        path_image_loading = f'{DIR}/Images/Rating History Loading.png'
-        path_image_straight_not_cover = f'{DIR}/Images/Five Straight Not Covered.png'
+        path_image_loading = f'{DIR_IMAGE}/Rating History Loading.png'
+        path_image_straight_not_cover = f'{DIR_IMAGE}/Five Straight Not Covered.png'
 
         while (time_span < time_out) & (not bool_complete):
             time.sleep(scan_period)
@@ -184,7 +186,7 @@ class SAParsing:
 
     def get_default_loc(self):
         if self.loc_default is None:
-            list_loc = cv_wait_for_pic(f'{DIR}/Images/Seeking Alpha Logo.png', region=(0, 0, 300, 300), find_thresh_hold=0.005, timeout=5)
+            list_loc = cv_wait_for_pic(f'{DIR_IMAGE}/Seeking Alpha Logo.png', region=(0, 0, 300, 300), find_thresh_hold=0.005, timeout=5)
             self.loc_default = (list_loc[0][0] + 100, list_loc[0][1] + 60)
 
     def parse_symbol_hist_rating(self, symbol):
@@ -256,10 +258,10 @@ class SAParsing:
         # image_bottom_ori = np.asarray(pygui.screenshot(region=region))
         # plt.imshow(image_bottom_ori, cmap='gray')
 
-        list_loc_3y = cv_wait_for_pic(f'{DIR}/Images/Rating History 3Y button.png', region=region, find_thresh_hold=0.005, timeout=5)
+        list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.005, timeout=5)
 
         if len(list_loc_3y) == 0:
-            list_loc_clicked = cv_wait_for_pic(f'{DIR}/Images/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.005, timeout=5)
+            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.005, timeout=5)
             assert len(list_loc_clicked) >= 1
         else:
             loc_3y = list_loc_3y[0]
@@ -267,18 +269,20 @@ class SAParsing:
             # pygui.moveTo(loc_3y[0] + region[0], loc_3y[1] + region[1])
             pygui.click()
             pygui.moveTo(self.loc_default[0], self.loc_default[1])
-            list_loc_clicked = cv_wait_for_pic(f'{DIR}/Images/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=5)
+            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=5)
             assert len(list_loc_clicked) >= 1
 
         time.sleep(3.5)
-        _temp = [list_loc_clicked[0][0] + 143, list_loc_clicked[0][1] + 91]
-        region_history_chart = (_temp[0], _temp[1], 509, 110)
+        _temp = [list_loc_clicked[0][0] - 143, list_loc_clicked[0][1] + 91]
+        region_history_chart = (_temp[0], _temp[1], 1000, 110)
+
+        # region_history_chart = (512, 943, 10, 10)
         image_bottom_ori = np.asarray(pygui.screenshot(region=region_history_chart))
         # plt.imshow(image_bottom_ori, cmap='gray')
 
         dict_channel_range = {
-            0: [26, 32],
-            1: [62, 69],
+            0: [26, 43],
+            1: [55, 69],
             2: [23, 31],
         }
         image_bottom = image_bottom_ori.copy()
@@ -318,12 +322,12 @@ class SAParsing:
         time.sleep(0.5)
         pygui.hotkey('ctrl', 't')
         time.sleep(0.5)
-        _ = cv_wait_for_pic(f'{DIR}/Images/New Tab.png', region=(0, 0, 800, 35), find_thresh_hold=0.005, timeout=15)
+        _ = cv_wait_for_pic(f'{DIR_IMAGE}/New Tab.png', region=(0, 0, 800, 35), find_thresh_hold=0.005, timeout=15)
         pygui.hotkey('ctrl', 'l')
         time.sleep(0.5)
         pygui.hotkey('ctrl', 'l')
         time.sleep(0.5)
-        _ = cv_wait_for_pic(f'{DIR}/Images/New Tab.png', region=(0, 0, 137, 35), find_thresh_hold=0.005, timeout=15)
+        _ = cv_wait_for_pic(f'{DIR_IMAGE}/New Tab.png', region=(0, 0, 137, 35), find_thresh_hold=0.005, timeout=15)
 
 
 self = SAParsing()

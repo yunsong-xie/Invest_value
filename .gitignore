@@ -25,4 +25,5 @@ cache/
 
 !static/csv/stock_list/*.csv
 !Seeking_Alpha/data_input/*.csv
-!Seeking_Alpha/Images/*.png
+!Seeking_Alpha/Images/yunso/
+!Seeking_Alpha/Images/**/*.png
