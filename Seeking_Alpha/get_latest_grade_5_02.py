@@ -168,7 +168,7 @@ class SAParsing:
             time.sleep(scan_period)
             # image_bottom_current = np.asarray(pygui.screenshot(region=region))
             # plt.imshow(image_bottom_current, cmap='gray')
-            list_loc_loading = cv_find_all_pic(path_image_loading, region, find_thresh_hold=0.02)
+            list_loc_loading = cv_find_all_pic(path_image_loading, region, find_thresh_hold=0.01, bool_output_full_info=True)
 
             if len(list_loc_loading) == 0:
                 bool_complete = True
@@ -192,7 +192,7 @@ class SAParsing:
     def parse_symbol_hist_rating(self, symbol):
 
         self.reset_chrome_tab()
-        
+
         url = f'https://seekingalpha.com/symbol/{symbol}/ratings/quant-ratings'
         self.goto_url(url, 2)
 
@@ -211,7 +211,8 @@ class SAParsing:
                     if 'Stop' in message_hist_status:
                         bool_continue = False
 
-            text_hist = self.copy_sa_page_text()
+            text_page = self.copy_sa_page_text()
+            text_hist = text_page
             if 'Parse text info':
                 text_hist_1 = text_hist.replace('\r', '')
                 _ind_table_start = text_hist_1.rindex('\nDate\tPrice\tQuant Rating\tQuant Score\t')
@@ -258,18 +259,26 @@ class SAParsing:
         # image_bottom_ori = np.asarray(pygui.screenshot(region=region))
         # plt.imshow(image_bottom_ori, cmap='gray')
 
-        list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.005, timeout=5)
+        list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.005, timeout=3)
 
         if len(list_loc_3y) == 0:
-            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.005, timeout=5)
+            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.005, timeout=3)
             assert len(list_loc_clicked) >= 1
         else:
-            loc_3y = list_loc_3y[0]
-            pygui.moveTo(loc_3y[0] + 13, loc_3y[1] + 60)
-            # pygui.moveTo(loc_3y[0] + region[0], loc_3y[1] + region[1])
-            pygui.click()
-            pygui.moveTo(self.loc_default[0], self.loc_default[1])
-            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=5)
+            list_loc_clicked, n_trials = [], 3
+            count_try, bool_success = 0, False
+            while (not bool_success) & (count_try < n_trials):
+                loc_3y = list_loc_3y[0]
+                pygui.moveTo(loc_3y[0] + 13, loc_3y[1] + 60)
+                # pygui.moveTo(loc_3y[0] + region[0], loc_3y[1] + region[1])
+                pygui.click()
+                pygui.moveTo(self.loc_default[0], self.loc_default[1])
+                list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=3)
+                n_trials += 1
+                if len(list_loc_clicked) >= 0:
+                    bool_success = True
+                else:
+                    time.sleep(1)
             assert len(list_loc_clicked) >= 1
 
         time.sleep(3.5)
@@ -304,7 +313,7 @@ class SAParsing:
             list_pd_symbol.append(_pd_symbol)
         pd_symbol_func = pd.concat(list_pd_symbol)
         pd_symbol_func = pd_symbol_func.drop_duplicates()
-        
+
         pd_symbol_exist = pd.read_sql('select distinct Symbol from rating', self.con)
         pd_symbol_ignore = pd.read_sql('select distinct Symbol from ignore_rating', self.con)
         list_symbol_exist = list(pd_symbol_exist['Symbol'])
@@ -312,7 +321,7 @@ class SAParsing:
         pd_symbol_func = pd_symbol_func.loc[~pd_symbol_func['Symbol'].isin(list_symbol_exist + list_symbol_ignore)].copy()
         pd_symbol_func['Quant Rating'] = pd_symbol_func['Quant Rating'].str.extract('([\d\.]+)').astype(float)
         pd_symbol_func = pd_symbol_func.sort_values(by='Quant Rating', ascending=False)
-        
+
         return pd_symbol_func
 
     @staticmethod
@@ -340,7 +349,12 @@ if 'C:1' == DIR[:2]:
     list_pd_info_all = []
     symbol = list_symbol[1]
     n_retry_max = 3
-    list_symbol_exe = list_symbol[:n_symbol_scan]
+    if username == 'ruxie':
+        list_symbol_exe = list_symbol[n_symbol_scan:]
+    elif username == 'yunso':
+        list_symbol_exe = list_symbol[:n_symbol_scan]
+    else:
+        raise ValueError(f'Not able to identify username: {username}')
     time_start, n_exe = time.time(), len(list_symbol_exe)
     self.activate_chrome()
     for _ind, symbol in enumerate(list_symbol_exe):
