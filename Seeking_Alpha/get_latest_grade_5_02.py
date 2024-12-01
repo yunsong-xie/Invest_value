@@ -324,7 +324,7 @@ class SAParsing:
         pd_symbol_func = pd_symbol_func.loc[~pd_symbol_func['Symbol'].isin(list_symbol_exist + list_symbol_ignore)].copy()
         pd_symbol_func['Quant Rating'] = pd_symbol_func['Quant Rating'].str.extract('([\d\.]+)').astype(float)
         pd_symbol_func = pd_symbol_func.sort_values(by='Quant Rating', ascending=False)
-
+        pd_symbol_func.index = np.arange(len(pd_symbol_func))
         return pd_symbol_func
 
     @staticmethod
@@ -358,6 +358,7 @@ if 'C:1' == DIR[:2]:
         list_symbol_exe = list_symbol[:n_symbol_scan]
     else:
         raise ValueError(f'Not able to identify username: {username}')
+    pd_symbol_exe = pd_symbol.loc[pd_symbol['Symbol'].isin(list_symbol_exe)]
     time_start, n_exe = time.time(), len(list_symbol_exe)
     self.activate_chrome()
     for _ind, symbol in enumerate(list_symbol_exe):
