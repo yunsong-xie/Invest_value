@@ -27,3 +27,4 @@ cache/
 !Seeking_Alpha/data_input/*.csv
 !Seeking_Alpha/Images/yunso/
 !Seeking_Alpha/Images/**/*.png
+/.idea

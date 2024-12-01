@@ -272,8 +272,10 @@ class SAParsing:
                 pygui.moveTo(loc_3y[0] + 13, loc_3y[1] + 60)
                 # pygui.moveTo(loc_3y[0] + region[0], loc_3y[1] + region[1])
                 pygui.click()
+                time.sleep(0.2)
                 pygui.moveTo(self.loc_default[0], self.loc_default[1])
-                list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=3)
+                time.sleep(0.4)
+                list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.02, timeout=3)
                 n_trials += 1
                 if len(list_loc_clicked) >= 0:
                     bool_success = True
