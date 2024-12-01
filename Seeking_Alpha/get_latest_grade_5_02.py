@@ -259,10 +259,10 @@ class SAParsing:
         # image_bottom_ori = np.asarray(pygui.screenshot(region=region))
         # plt.imshow(image_bottom_ori, cmap='gray')
 
-        list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.005, timeout=3)
+        list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.01, timeout=3)
 
         if len(list_loc_3y) == 0:
-            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.005, timeout=3)
+            list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.01, timeout=3)
             assert len(list_loc_clicked) >= 1
         else:
             list_loc_clicked, n_trials = [], 3
@@ -275,9 +275,9 @@ class SAParsing:
                 time.sleep(0.2)
                 pygui.moveTo(self.loc_default[0], self.loc_default[1])
                 time.sleep(0.4)
-                list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.02, timeout=3)
+                list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.015, timeout=3)
                 n_trials += 1
-                if len(list_loc_clicked) >= 0:
+                if len(list_loc_clicked) >= 1:
                     bool_success = True
                 else:
                     time.sleep(1)
