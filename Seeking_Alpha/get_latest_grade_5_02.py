@@ -1,5 +1,5 @@
 import pyautogui as pygui
-import pyperclip, time, os, sys, re, glob, sqlite3
+import pyperclip, time, os, sys, re, glob, sqlite3, traceback
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -268,6 +268,7 @@ class SAParsing:
             list_loc_clicked, n_trials = [], 3
             count_try, bool_success = 0, False
             while (not bool_success) & (count_try < n_trials):
+                list_loc_3y = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button.png', region=region, find_thresh_hold=0.01, timeout=3)
                 loc_3y = list_loc_3y[0]
                 pygui.moveTo(loc_3y[0] + 13, loc_3y[1] + 60)
                 # pygui.moveTo(loc_3y[0] + region[0], loc_3y[1] + region[1])
@@ -276,7 +277,7 @@ class SAParsing:
                 pygui.moveTo(self.loc_default[0], self.loc_default[1])
                 time.sleep(0.4)
                 list_loc_clicked = cv_wait_for_pic(f'{DIR_IMAGE}/Rating History 3Y button-Clicked.png', region=region, find_thresh_hold=0.015, timeout=3)
-                n_trials += 1
+                count_try += 1
                 if len(list_loc_clicked) >= 1:
                     bool_success = True
                 else:
@@ -360,24 +361,28 @@ if 'C:1' == DIR[:2]:
     time_start, n_exe = time.time(), len(list_symbol_exe)
     self.activate_chrome()
     for _ind, symbol in enumerate(list_symbol_exe):
-        if 1 == 0:
-            i_retry, bool_success = 0, False
-            while (i_retry < n_retry_max) & (not bool_success):
-                try:
-                    pd_info_symbol = self.parse_symbol_hist_rating(symbol)
-                    bool_success = True
-                except Exception as _e:
-                    self.reset_chrome_tab()
-                    pass
-        pd_info_symbol = self.parse_symbol_hist_rating(symbol)
-        n_commit = len(pd_info_symbol)
-        if len(pd_info_symbol) > 0:
-            pd_info_symbol['Symbol'] = symbol
-            pd_info_symbol.to_sql('rating', self.con, if_exists='append', index=False)
-            list_pd_info_all.append(pd_info_symbol)
+        i_retry, bool_success, pd_info_symbol = 0, False, None
+        while (i_retry < n_retry_max) & (not bool_success):
+            i_retry += 1
+            try:
+                pd_info_symbol = self.parse_symbol_hist_rating(symbol)
+                bool_success = True
+            except Exception as _e:
+                print(f'Failed when process {symbol}:')
+                traceback.print_exc()
+                self.reset_chrome_tab()
+
+        if pd_info_symbol is not None:
+            n_commit = len(pd_info_symbol)
+            if len(pd_info_symbol) > 0:
+                pd_info_symbol['Symbol'] = symbol
+                pd_info_symbol.to_sql('rating', self.con, if_exists='append', index=False)
+                list_pd_info_all.append(pd_info_symbol)
+            else:
+                pd_info_symbol = pd.DataFrame({'Symbol': [symbol]})
+                pd_info_symbol.to_sql('ignore_rating', self.con, if_exists='append', index=False)
         else:
-            pd_info_symbol = pd.DataFrame({'Symbol': [symbol]})
-            pd_info_symbol.to_sql('ignore_rating', self.con, if_exists='append', index=False)
+            n_commit = -1
         time_span = round(time.time() - time_start, 1)
         print(f'Time {time_span} s - progress {_ind + 1}/{n_exe} - {symbol} - entries - {n_commit}')
     pd_info_all = pd.concat(list_pd_info_all)
