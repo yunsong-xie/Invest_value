@@ -4,12 +4,13 @@ local/
 .idea/**/*.*
 .idea/*.*
 .idea/
-__pycache__/
+/.idea
+/__pycache__/
 *.py[cod]
-.vscode
-.databricks
+/.vscode/
+/.databricks/
 
-cache/
+/cache/
 
 
 **/~*.*
@@ -25,6 +26,6 @@ cache/
 
 !static/csv/stock_list/*.csv
 !Seeking_Alpha/data_input/*.csv
+!Seeking_Alpha/data_output/*.csv
 !Seeking_Alpha/Images/yunso/
 !Seeking_Alpha/Images/**/*.png
-/.idea

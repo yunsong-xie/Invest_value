@@ -316,12 +316,17 @@ class SAParsing:
             list_pd_symbol.append(_pd_symbol)
         pd_symbol_func = pd.concat(list_pd_symbol)
         pd_symbol_func = pd_symbol_func.drop_duplicates()
+        path_symbol_complete = f'{DIR}/data_output/complete.csv'
+        pd_symbol_complete_ori = pd.read_csv(path_symbol_complete)
 
         pd_symbol_exist = pd.read_sql('select distinct Symbol from rating', self.con)
         pd_symbol_ignore = pd.read_sql('select distinct Symbol from ignore_rating', self.con)
         list_symbol_exist = list(pd_symbol_exist['Symbol'])
         list_symbol_ignore = list(pd_symbol_ignore['Symbol'])
-        pd_symbol_func = pd_symbol_func.loc[~pd_symbol_func['Symbol'].isin(list_symbol_exist + list_symbol_ignore)].copy()
+        list_symbol_complete = list(set(list_symbol_exist + list_symbol_ignore + list(pd_symbol_complete_ori['Symbol'])))
+        pd_symbol_complete_all = pd.DataFrame({'Symbol': list_symbol_complete})
+        pd_symbol_complete_all.to_csv(path_symbol_complete, index=False)
+        pd_symbol_func = pd_symbol_func.loc[~pd_symbol_func['Symbol'].isin(list_symbol_complete)].copy()
         pd_symbol_func['Quant Rating'] = pd_symbol_func['Quant Rating'].str.extract('([\d\.]+)').astype(float)
         pd_symbol_func = pd_symbol_func.sort_values(by='Quant Rating', ascending=False)
 
@@ -347,15 +352,13 @@ if 'C:1' == DIR[:2]:
 
     pd_symbol = self.get_symbols()
     list_symbol = list(pd_symbol['Symbol'])
-    n_symbol_scan = 2000
 
     list_pd_info_all = []
-    symbol = list_symbol[1]
     n_retry_max = 3
     if username == 'ruxie':
-        list_symbol_exe = list_symbol[n_symbol_scan:]
+        list_symbol_exe = [_ for _ in list_symbol[::-1]]
     elif username == 'yunso':
-        list_symbol_exe = list_symbol[:n_symbol_scan]
+        list_symbol_exe = [_ for _ in list_symbol]
     else:
         raise ValueError(f'Not able to identify username: {username}')
     time_start, n_exe = time.time(), len(list_symbol_exe)
