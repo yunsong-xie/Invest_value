@@ -369,7 +369,7 @@ if 'C:1' == DIR[:2]:
         while (i_retry < n_retry_max) & (not bool_success):
             i_retry += 1
             try:
-                pd_info_symbol = self.parse_symbol_hist_rating(symbol)
+                pd_info_symbol = self.parse_symbol_hist_rating(symbol).drop_duplicates()
                 bool_success = True
             except Exception as _e:
                 print(f'Failed when process {symbol}:')
