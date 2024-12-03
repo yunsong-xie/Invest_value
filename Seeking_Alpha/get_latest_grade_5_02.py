@@ -323,12 +323,12 @@ class SAParsing:
         pd_symbol_ignore = pd.read_sql('select distinct Symbol from ignore_rating', self.con)
         list_symbol_exist = list(pd_symbol_exist['Symbol'])
         list_symbol_ignore = list(pd_symbol_ignore['Symbol'])
-        list_symbol_complete = list(set(list_symbol_exist + list_symbol_ignore + list(pd_symbol_complete_ori['Symbol'])))
+        list_symbol_complete = sorted(set(list_symbol_exist + list_symbol_ignore + list(pd_symbol_complete_ori['Symbol'])))
         pd_symbol_complete_all = pd.DataFrame({'Symbol': list_symbol_complete})
         pd_symbol_complete_all.to_csv(path_symbol_complete, index=False)
         pd_symbol_func = pd_symbol_func.loc[~pd_symbol_func['Symbol'].isin(list_symbol_complete)].copy()
         pd_symbol_func['Quant Rating'] = pd_symbol_func['Quant Rating'].str.extract('([\d\.]+)').astype(float)
-        pd_symbol_func = pd_symbol_func.sort_values(by='Quant Rating', ascending=False)
+        pd_symbol_func = pd_symbol_func.sort_values(by='Symbol', ascending=False)
         pd_symbol_func.index = np.arange(len(pd_symbol_func))
         return pd_symbol_func
 
